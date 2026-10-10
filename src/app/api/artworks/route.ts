@@ -54,3 +54,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let id = searchParams.get('id');
+    let password = searchParams.get('password');
+
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body.id;
+        password = body.password;
+      } catch {
+        // body 없는 경우 쿼리 파라미터 유지
+      }
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: '삭제할 작품 ID가 필요합니다.' }, { status: 400 });
+    }
+
+    const expectedPassword = process.env.ADMIN_PASSWORD || '1234';
+    if (password !== expectedPassword) {
+      return NextResponse.json({ error: '관리자 비밀번호가 올바르지 않습니다.' }, { status: 401 });
+    }
+
+    const { error } = await supabase
+      .from('artworks')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: '작품이 삭제되었습니다.' });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
