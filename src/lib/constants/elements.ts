@@ -109,7 +109,7 @@ export const LINE_TEMPLATES: ElementTemplate[] = [
     subType: 'dashed',
     name: '점선 (Dashed)',
     icon: '┄',
-    description: '은은한 여운, 거리감, 아련한 그리움을 전하는 끊어진 선',
+    description: '은은한 여운, 거리감, 아련한 그리움을 전하는 끊어진 선 (마디 개수와 굵기 실시간 조절 가능)',
     defaultWidth: 32,
     defaultHeight: 2
   },

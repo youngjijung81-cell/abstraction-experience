@@ -117,6 +117,10 @@ export const SplitStudio: React.FC = () => {
       color: currentColor,
       opacity: 0.85,
       strokeWidth: type === 'line' ? 4 : 2,
+      frequency: subType === 'dashed' ? 8 : (['smooth_curve', 'wave', 'zigzag', 'spiral', 'motion'].includes(subType) ? 4 : undefined),
+      amplitude: 1,
+      sides: subType === 'polygon' ? 5 : undefined,
+      distortion: 0,
       fill: true,
       zIndex: nextZ
     };

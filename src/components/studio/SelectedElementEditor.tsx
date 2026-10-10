@@ -226,6 +226,28 @@ export const SelectedElementEditor: React.FC<Props> = ({
               </div>
             </>
           )}
+
+          {/* 점선(dashed) 전용: 마디 개수(밀도) 조절 슬라이더 */}
+          {element.subType === 'dashed' && (
+            <div className="pt-1 border-t border-blue-200/60">
+              <div className="flex justify-between text-[11px] text-gray-600 mb-0.5">
+                <span>점선 마디 개수 (밀도)</span>
+                <span className="font-mono font-bold text-blue-600">{element.frequency || 8}개</span>
+              </div>
+              <input
+                type="range"
+                min="2"
+                max="30"
+                step="1"
+                value={element.frequency || 8}
+                onChange={(e) => onUpdate({ frequency: Number(e.target.value) })}
+                className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <p className="text-[10px] text-blue-700/80 mt-1">
+                점선의 개수를 줄이거나 늘려 여백과 호흡을 조절합니다. 선이 굵어져도 마디 간격이 비례하여 유지됩니다.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

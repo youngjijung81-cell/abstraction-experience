@@ -195,16 +195,23 @@ function drawLine(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: num
       ctx.stroke();
       break;
 
-    case 'dashed':
+    case 'dashed': {
       ctx.save();
-      const dashSize = Math.max(3, 14 / freq);
-      ctx.setLineDash([dashSize, dashSize]);
+      // 굵기가 두꺼워져도 마디가 뭉개져 실선이 되지 않도록 butt 캡 적용 및 주기에 비례한 대시/갭 분할
+      ctx.lineCap = 'butt';
+      const numDashes = Math.max(2, Math.min(30, element.frequency || 8));
+      const totalLen = Math.max(10, halfW * 2);
+      const unit = totalLen / numDashes;
+      const dashLen = Math.max(2, unit * 0.5);
+      const gapLen = Math.max(2, unit * 0.5);
+      ctx.setLineDash([dashLen, gapLen]);
       ctx.beginPath();
       ctx.moveTo(-halfW, 0);
       ctx.lineTo(halfW, 0);
       ctx.stroke();
       ctx.restore();
       break;
+    }
 
     case 'smooth_curve':
       // 촘촘함에 따른 다중 S-커브 또는 유연한 단일/복합 곡선
@@ -397,8 +404,9 @@ export function drawSelectionBox(
 ) {
   const { px, py, w, h } = toCanvasCoords(element, canvasWidth, canvasHeight);
   const pad = 12;
+  const strokeExtra = element.strokeWidth || 0;
   const boxW = Math.max(20, w + pad * 2);
-  const boxH = Math.max(20, h + pad * 2);
+  const boxH = Math.max(20, Math.max(h, strokeExtra) + pad * 2);
 
   ctx.save();
   ctx.translate(px, py);
