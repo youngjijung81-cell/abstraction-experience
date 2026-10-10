@@ -1,0 +1,450 @@
+'use client';
+
+import React, { useState } from 'react';
+import { StudioMode, EmotionKey, PrincipleKey, ArtElement } from '@/lib/types';
+import { EMOTIONS, PRINCIPLES } from '@/lib/constants/emotions';
+import { ART_COLORS, EMOTION_PALETTES } from '@/lib/constants/colors';
+import { POINT_TEMPLATES, LINE_TEMPLATES, SHAPE_TEMPLATES } from '@/lib/constants/elements';
+import { SelectedElementEditor } from './SelectedElementEditor';
+import { Sparkles, Palette, Shapes, Sliders, Wand2, Info, Compass } from 'lucide-react';
+
+interface Props {
+  mode: StudioMode;
+  onModeChange: (m: StudioMode) => void;
+  selectedEmotion: EmotionKey;
+  onEmotionSelect: (e: EmotionKey) => void;
+  onAddElement: (type: 'point' | 'line' | 'shape', subType: string) => void;
+  onApplyPrinciple: (p: PrincipleKey) => void;
+  activePrinciples: PrincipleKey[];
+  currentColor: string;
+  onColorChange: (c: string) => void;
+  selectedElement: ArtElement | null;
+  onUpdateElement: (updated: Partial<ArtElement>) => void;
+  onDeleteElement: (id: string) => void;
+  onDuplicateElement: (id: string) => void;
+  onBringForward: (id: string) => void;
+  onSendBackward: (id: string) => void;
+  onDeselect: () => void;
+  onOpenGuide: () => void;
+}
+
+export const LeftToolPanel: React.FC<Props> = ({
+  mode,
+  onModeChange,
+  selectedEmotion,
+  onEmotionSelect,
+  onAddElement,
+  onApplyPrinciple,
+  activePrinciples,
+  currentColor,
+  onColorChange,
+  selectedElement,
+  onUpdateElement,
+  onDeleteElement,
+  onDuplicateElement,
+  onBringForward,
+  onSendBackward,
+  onDeselect,
+  onOpenGuide,
+}) => {
+  const [activeTab, setActiveTab] = useState<'emotions' | 'elements' | 'colors' | 'principles'>('emotions');
+  const [elementCategory, setElementCategory] = useState<'shape' | 'line' | 'point'>('shape');
+
+  const currEmotionInfo = EMOTIONS.find((e) => e.key === selectedEmotion);
+
+  return (
+    <div className="h-full flex flex-col bg-slate-50 border-r border-gray-200 select-none overflow-hidden">
+      {/* 1. 상단 모드 전환 탭 */}
+      <div className="p-3 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm font-bold text-sm">
+              Art
+            </div>
+            <div>
+              <h1 className="text-sm font-extrabold text-gray-900 tracking-tight">
+                감정 추상화 스튜디오
+              </h1>
+              <p className="text-[11px] text-gray-500">고등학교 미술 조형요소 & 원리 실습</p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenGuide}
+            className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition"
+          >
+            <Info size={13} />
+            <span>학습가이드</span>
+          </button>
+        </div>
+
+        {/* 3가지 모드 토글 */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-gray-100 rounded-lg">
+          <button
+            onClick={() => onModeChange('auto')}
+            className={`py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition ${
+              mode === 'auto'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Wand2 size={13} />
+            <span>자동 생성</span>
+          </button>
+          <button
+            onClick={() => onModeChange('guided')}
+            className={`py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition ${
+              mode === 'guided'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Compass size={13} />
+            <span>감정 가이드</span>
+          </button>
+          <button
+            onClick={() => onModeChange('freeform')}
+            className={`py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1 transition ${
+              mode === 'freeform'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Sparkles size={13} />
+            <span>자유 창작</span>
+          </button>
+        </div>
+
+        {/* 모드별 안내 메시지 */}
+        <div className="mt-2 text-[11px] text-gray-600 bg-blue-50/60 rounded px-2 py-1">
+          {mode === 'auto' && '✨ 감정만 선택하면 인공지능 조형 알고리즘이 자동으로 추상화 화면을 구성합니다.'}
+          {mode === 'guided' && '🎯 선택한 감정의 성격에 어울리는 조형 요소와 색채를 단계별로 탐색합니다.'}
+          {mode === 'freeform' && '🎨 백지 캔버스에서 점·선·면·색과 조형원리를 완전히 자유롭게 배치하고 창작합니다.'}
+        </div>
+      </div>
+
+      {/* 2. 도구 탭 메뉴 */}
+      <div className="flex border-b border-gray-200 bg-white">
+        <button
+          onClick={() => setActiveTab('emotions')}
+          className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'emotions'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <span>💖</span>
+          <span>감정 (16종)</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('elements')}
+          className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'elements'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Shapes size={14} />
+          <span>조형요소 (점·선·면)</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('colors')}
+          className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'colors'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Palette size={14} />
+          <span>색채 (22색)</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('principles')}
+          className={`flex-1 py-2.5 text-xs font-bold border-b-2 flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'principles'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
+              : 'border-transparent text-gray-500 hover:text-gray-800'
+          }`}
+        >
+          <Sliders size={14} />
+          <span>조형원리 (8원리)</span>
+        </button>
+      </div>
+
+      {/* 3. 탭별 메인 컨텐츠 영역 (스크롤 가능) */}
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+        {/* 탭 1: 감정 선택 (16종) */}
+        {activeTab === 'emotions' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-700">표현하고 싶은 감정을 선택하세요</span>
+              <span className="text-[11px] text-gray-400">총 16가지 감정</span>
+            </div>
+
+            {/* 감정 칩 그리드 */}
+            <div className="grid grid-cols-2 gap-2">
+              {EMOTIONS.map((e) => {
+                const isSelected = selectedEmotion === e.key;
+                return (
+                  <button
+                    key={e.key}
+                    onClick={() => onEmotionSelect(e.key)}
+                    className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50/60 shadow-sm ring-1 ring-blue-400'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{e.emoji}</span>
+                        <span className="text-xs font-bold text-gray-900">{e.koreanName}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-medium">{e.englishName}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 line-clamp-1">{e.description}</p>
+                    {/* 감정 대표 팔레트 도트 */}
+                    <div className="flex gap-1 mt-1.5">
+                      {e.colorPalette.slice(0, 4).map((c, i) => (
+                        <span
+                          key={i}
+                          style={{ backgroundColor: c }}
+                          className="w-2.5 h-2.5 rounded-full border border-gray-200"
+                        />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 현재 선택된 감정의 조형 해설 */}
+            {currEmotionInfo && (
+              <div className="bg-white border rounded-xl p-3 shadow-2xs space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{currEmotionInfo.emoji}</span>
+                  <span className="text-xs font-bold text-gray-800">
+                    &apos;{currEmotionInfo.koreanName}&apos;의 조형적 해석
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {currEmotionInfo.description}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 탭 2: 조형 요소 (점, 선, 면) */}
+        {activeTab === 'elements' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-700">추가할 조형 요소를 선택하세요</span>
+              <span className="text-[11px] text-gray-400">클릭 시 캔버스에 추가</span>
+            </div>
+
+            {/* 하위 카테고리 탭: 면 / 선 / 점 */}
+            <div className="flex p-1 bg-gray-100 rounded-lg gap-1">
+              <button
+                onClick={() => setElementCategory('shape')}
+                className={`flex-1 py-1 text-xs font-bold rounded ${
+                  elementCategory === 'shape' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-500'
+                }`}
+              >
+                면 (Shape) 8종
+              </button>
+              <button
+                onClick={() => setElementCategory('line')}
+                className={`flex-1 py-1 text-xs font-bold rounded ${
+                  elementCategory === 'line' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-500'
+                }`}
+              >
+                선 (Line) 7종
+              </button>
+              <button
+                onClick={() => setElementCategory('point')}
+                className={`flex-1 py-1 text-xs font-bold rounded ${
+                  elementCategory === 'point' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-500'
+                }`}
+              >
+                점 (Point) 5종
+              </button>
+            </div>
+
+            {/* 면(Shape) 목록 */}
+            {elementCategory === 'shape' && (
+              <div className="grid grid-cols-2 gap-2">
+                {SHAPE_TEMPLATES.map((item) => (
+                  <button
+                    key={item.subType}
+                    onClick={() => onAddElement('shape', item.subType)}
+                    className="p-2.5 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm text-left transition group"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg w-6 text-center text-blue-600 font-bold group-hover:scale-110 transition-transform">
+                        {item.icon}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800">{item.name}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 line-clamp-1">{item.description}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 선(Line) 목록 */}
+            {elementCategory === 'line' && (
+              <div className="grid grid-cols-2 gap-2">
+                {LINE_TEMPLATES.map((item) => (
+                  <button
+                    key={item.subType}
+                    onClick={() => onAddElement('line', item.subType)}
+                    className="p-2.5 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm text-left transition group"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg w-6 text-center text-blue-600 font-bold group-hover:scale-110 transition-transform">
+                        {item.icon}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800">{item.name}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 line-clamp-1">{item.description}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 점(Point) 목록 */}
+            {elementCategory === 'point' && (
+              <div className="grid grid-cols-2 gap-2">
+                {POINT_TEMPLATES.map((item) => (
+                  <button
+                    key={item.subType}
+                    onClick={() => onAddElement('point', item.subType)}
+                    className="p-2.5 bg-white border border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-sm text-left transition group"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg w-6 text-center text-blue-600 font-bold group-hover:scale-110 transition-transform">
+                        {item.icon}
+                      </span>
+                      <span className="text-xs font-bold text-gray-800">{item.name}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 line-clamp-1">{item.description}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 탭 3: 색채 팔레트 (22색 미술 표준 + 커스텀) */}
+        {activeTab === 'colors' && (
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-gray-700">미술 교육용 표준 22색 팔레트</span>
+                <span className="text-[11px] text-gray-400">현재 색: {currentColor}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {ART_COLORS.map((c) => {
+                  const isSelected = currentColor.toLowerCase() === c.hex.toLowerCase();
+                  return (
+                    <button
+                      key={c.hex}
+                      onClick={() => onColorChange(c.hex)}
+                      className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-400'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <span
+                        style={{ backgroundColor: c.hex }}
+                        className="w-7 h-7 rounded-full border border-black/10 shadow-inner"
+                      />
+                      <span className="text-[10px] font-semibold text-gray-700 text-center truncate w-full">
+                        {c.name.split(' ')[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 자유 조색 피커 */}
+            <div className="bg-white border rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={currentColor}
+                  onChange={(e) => onColorChange(e.target.value)}
+                  className="w-9 h-9 rounded-lg border border-gray-300 cursor-pointer p-0"
+                />
+                <div>
+                  <span className="text-xs font-bold text-gray-800 block">자유 조색 (Custom Picker)</span>
+                  <span className="text-[11px] text-gray-500">원하는 색상을 직접 배색해보세요</span>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                {currentColor}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 탭 4: 조형 원리 (8대 원리 인터랙티브 변형) */}
+        {activeTab === 'principles' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-700">
+                조형 원리를 선택하면 캔버스가 즉시 변형됩니다
+              </span>
+              <span className="text-[11px] text-gray-400">8대 핵심 원리</span>
+            </div>
+
+            <div className="space-y-2">
+              {PRINCIPLES.map((p) => {
+                const isActive = activePrinciples.includes(p.key);
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => onApplyPrinciple(p.key)}
+                    className={`w-full p-3 rounded-xl border text-left transition flex items-start gap-3 ${
+                      isActive
+                        ? 'border-blue-500 bg-blue-50/80 shadow-sm ring-1 ring-blue-400'
+                        : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-2xl p-1 bg-white rounded-lg border border-gray-100 shadow-2xs">
+                      {p.icon}
+                    </span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-900">{p.koreanName}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">{p.englishName}</span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{p.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 선택된 요소가 있을 때 실시간 속성 편집기 표시 */}
+        {selectedElement && (
+          <div className="pt-2">
+            <SelectedElementEditor
+              element={selectedElement}
+              onUpdate={onUpdateElement}
+              onDelete={onDeleteElement}
+              onDuplicate={onDuplicateElement}
+              onBringForward={onBringForward}
+              onSendBackward={onSendBackward}
+              onDeselect={onDeselect}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

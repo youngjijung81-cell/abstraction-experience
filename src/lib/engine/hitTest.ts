@@ -1,0 +1,90 @@
+import { ArtElement } from '../types';
+import { toCanvasCoords } from './canvasRenderer';
+
+export type HandleType = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'rotate' | null;
+
+export function hitTestElement(
+  clickX: number,
+  clickY: number,
+  element: ArtElement,
+  canvasWidth: number,
+  canvasHeight: number
+): { hit: boolean; handle: HandleType } {
+  const { px, py, w, h } = toCanvasCoords(element, canvasWidth, canvasHeight);
+  const pad = 12;
+  const boxW = w + pad * 2;
+  const boxH = h + pad * 2;
+
+  // Translate click to element's local space (reverse translation and rotation)
+  const rad = (-element.rotation * Math.PI) / 180;
+  const dx = clickX - px;
+  const dy = clickY - py;
+  const localX = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const localY = dx * Math.sin(rad) + dy * Math.cos(rad);
+
+  // Check Rotate Handle (top stem)
+  const stemLen = 22;
+  const rotHandleY = -boxH / 2 - stemLen;
+  const rotDist = Math.hypot(localX - 0, localY - rotHandleY);
+  if (rotDist <= 12) {
+    return { hit: true, handle: 'rotate' };
+  }
+
+  // Check 4 Corner Handles
+  const handleRadius = 10;
+  const corners: { handle: HandleType; x: number; y: number }[] = [
+    { handle: 'nw', x: -boxW / 2, y: -boxH / 2 },
+    { handle: 'ne', x: boxW / 2, y: -boxH / 2 },
+    { handle: 'se', x: boxW / 2, y: boxH / 2 },
+    { handle: 'sw', x: -boxW / 2, y: boxH / 2 }
+  ];
+
+  for (const corner of corners) {
+    if (Math.hypot(localX - corner.x, localY - corner.y) <= handleRadius) {
+      return { hit: true, handle: corner.handle };
+    }
+  }
+
+  // Check Body (Move)
+  if (
+    localX >= -boxW / 2 &&
+    localX <= boxW / 2 &&
+    localY >= -boxH / 2 &&
+    localY <= boxH / 2
+  ) {
+    return { hit: true, handle: 'move' };
+  }
+
+  return { hit: false, handle: null };
+}
+
+export function findTopHitElement(
+  clickX: number,
+  clickY: number,
+  elements: ArtElement[],
+  selectedId: string | null,
+  canvasWidth: number,
+  canvasHeight: number
+): { elementId: string | null; handle: HandleType } {
+  // If an element is already selected, test its handles first
+  if (selectedId) {
+    const selected = elements.find((el) => el.id === selectedId);
+    if (selected) {
+      const res = hitTestElement(clickX, clickY, selected, canvasWidth, canvasHeight);
+      if (res.hit && res.handle && res.handle !== 'move') {
+        return { elementId: selected.id, handle: res.handle };
+      }
+    }
+  }
+
+  // Sort by zIndex descending (highest on top)
+  const sorted = [...elements].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+  for (const el of sorted) {
+    const res = hitTestElement(clickX, clickY, el, canvasWidth, canvasHeight);
+    if (res.hit) {
+      return { elementId: el.id, handle: res.handle || 'move' };
+    }
+  }
+
+  return { elementId: null, handle: null };
+}
