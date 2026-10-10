@@ -54,8 +54,6 @@ export const SplitStudio: React.FC = () => {
   const handleModeChange = (newMode: StudioMode) => {
     setMode(newMode);
     if (newMode === 'freeform') {
-      // 자유 창작 모드로 전환 시, 백지 상태에서 시작하거나 기존 유지 선택 가능
-      // 여기서는 깨끗한 백지에서 시작할 수 있도록 비워줍니다
       const empty: ArtElement[] = [];
       setElements(empty);
       pushHistory(empty);
@@ -72,13 +70,11 @@ export const SplitStudio: React.FC = () => {
   const handleEmotionSelect = (emotion: EmotionKey) => {
     setSelectedEmotion(emotion);
     if (mode === 'auto') {
-      // 자동 모드일 때는 해당 감정의 조형 알고리즘으로 즉각 자동 렌더링
       const generated = generateArtByEmotion(emotion);
       setElements(generated);
       pushHistory(generated);
       setSelectedId(null);
     }
-    // 가이드 모드나 자유 모드에서는 템플릿과 추천 팔레트만 갱신
   };
 
   // 조형 요소 수동 추가
@@ -107,7 +103,6 @@ export const SplitStudio: React.FC = () => {
     }
 
     const nextZ = elements.length > 0 ? Math.max(...elements.map((e) => e.zIndex || 0)) + 1 : 1;
-    // 캔버스 중앙 근처에 약간의 랜덤 오프셋
     const randOffset = () => (Math.random() - 0.5) * 15;
 
     const newElement: ArtElement = {
@@ -132,6 +127,13 @@ export const SplitStudio: React.FC = () => {
     setSelectedId(newElement.id);
   };
 
+  // 자유 드로잉 획 추가
+  const handleAddDrawnStroke = (strokeElement: ArtElement) => {
+    const nextElements = [...elements, strokeElement];
+    setElements(nextElements);
+    pushHistory(nextElements);
+  };
+
   // 조형 원리 적용
   const handleApplyPrinciple = (principle: PrincipleKey) => {
     setActivePrinciples((prev) => {
@@ -142,13 +144,12 @@ export const SplitStudio: React.FC = () => {
       }
     });
 
-    // 화면 내 요소들에 조형 원리 변형 알고리즘 실행
     const transformed = applyPrinciple(elements, principle);
     setElements(transformed);
     pushHistory(transformed);
   };
 
-  // 선택된 요소 속성 업데이트 (인라인 / 에디터)
+  // 선택된 요소 속성 업데이트
   const handleUpdateElement = (updated: Partial<ArtElement>) => {
     if (!selectedId) return;
     const nextElements = elements.map((el) => {
@@ -161,7 +162,7 @@ export const SplitStudio: React.FC = () => {
     pushHistory(nextElements);
   };
 
-  // 캔버스 드래그 중 실시간 업데이트 (pushHistory 옵션 분리)
+  // 캔버스 드래그 중 실시간 업데이트
   const handleUpdateElementDirect = (id: string, updated: Partial<ArtElement>, shouldPushHistory?: boolean) => {
     const nextElements = elements.map((el) => {
       if (el.id === id) {
@@ -290,6 +291,7 @@ export const SplitStudio: React.FC = () => {
           selectedId={selectedId}
           onSelectElement={setSelectedId}
           onUpdateElementDirect={handleUpdateElementDirect}
+          onAddDrawnStroke={handleAddDrawnStroke}
           onDeleteSelected={() => selectedId && handleDeleteElement(selectedId)}
           onClearAll={handleClearAll}
           onUndo={handleUndo}
@@ -299,6 +301,7 @@ export const SplitStudio: React.FC = () => {
           selectedEmotion={selectedEmotion}
           activePrinciples={activePrinciples}
           mode={mode}
+          currentColor={currentColor}
           onOpenDownload={() => setIsDownloadOpen(true)}
           onOpenGallery={() => setIsGalleryOpen(true)}
         />

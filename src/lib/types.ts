@@ -3,8 +3,10 @@ export type StudioMode = 'auto' | 'guided' | 'freeform';
 export type ElementType = 'point' | 'line' | 'shape';
 
 export type PointSubType = 'single' | 'cluster' | 'spray' | 'heavy' | 'diamond';
-export type LineSubType = 'straight' | 'smooth_curve' | 'wave' | 'zigzag' | 'spiral' | 'dashed' | 'motion';
+export type LineSubType = 'straight' | 'smooth_curve' | 'wave' | 'zigzag' | 'spiral' | 'dashed' | 'motion' | 'freehand';
 export type ShapeSubType = 'circle' | 'ellipse' | 'triangle' | 'rect' | 'star' | 'blob' | 'fragment' | 'polygon';
+
+export type BrushStyle = 'pen' | 'brush' | 'marker' | 'glow';
 
 export interface ArtElement {
   id: string;
@@ -20,7 +22,8 @@ export interface ArtElement {
   strokeWidth?: number;
   fill?: boolean;
   zIndex: number;
-  // Specific geometry points or seeds
+  brushStyle?: BrushStyle;
+  // Freehand stroke points (relative to element center in percentage)
   points?: { x: number; y: number }[];
 }
 
@@ -56,6 +59,21 @@ export type PrincipleKey =
   | 'variety'
   | 'movement';
 
+export interface EmotionVisualGuide {
+  recommendedElements: {
+    point: string;
+    line: string;
+    shape: string;
+  };
+  recommendedColorsDesc: string;
+  recommendedPrinciples: {
+    primary: PrincipleKey;
+    secondary: PrincipleKey;
+    reason: string;
+  };
+  artConceptNote: string;
+}
+
 export interface EmotionInfo {
   key: EmotionKey;
   koreanName: string;
@@ -64,6 +82,7 @@ export interface EmotionInfo {
   category: '활기/긍정' | '평온/안정' | '슬픔/내면' | '긴장/격정';
   colorPalette: string[];
   description: string;
+  guide: EmotionVisualGuide;
 }
 
 export interface PrincipleInfo {

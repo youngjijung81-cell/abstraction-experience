@@ -54,12 +54,75 @@ export function drawElement(
       drawPoint(ctx, element.subType, halfW, halfH);
       break;
     case 'line':
-      drawLine(ctx, element.subType, halfW, halfH);
+      if (element.subType === 'freehand') {
+        drawFreehandStroke(ctx, element, canvasWidth, canvasHeight);
+      } else {
+        drawLine(ctx, element.subType, halfW, halfH);
+      }
       break;
     case 'shape':
       drawShape(ctx, element.subType, halfW, halfH, element.fill ?? true);
       break;
   }
+
+  ctx.restore();
+}
+
+function drawFreehandStroke(
+  ctx: CanvasRenderingContext2D,
+  element: ArtElement,
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  const points = element.points;
+  if (!points || points.length === 0) return;
+
+  const brush = element.brushStyle || 'pen';
+
+  ctx.save();
+  if (brush === 'glow') {
+    ctx.shadowColor = element.color;
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = (element.strokeWidth || 4) * 1.2;
+  } else if (brush === 'marker') {
+    ctx.globalAlpha = Math.min(0.55, element.opacity);
+    ctx.lineWidth = (element.strokeWidth || 8) * 1.8;
+    ctx.lineCap = 'square';
+  } else if (brush === 'brush') {
+    ctx.lineWidth = element.strokeWidth || 6;
+  }
+
+  // Points are percentage coordinates relative to element center
+  const toPx = (pt: { x: number; y: number }) => ({
+    x: (pt.x / 100) * canvasWidth,
+    y: (pt.y / 100) * canvasHeight
+  });
+
+  if (points.length === 1) {
+    const p = toPx(points[0]);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, (element.strokeWidth || 4) / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  ctx.beginPath();
+  const first = toPx(points[0]);
+  ctx.moveTo(first.x, first.y);
+
+  // Smooth quadratic curves between points
+  for (let i = 1; i < points.length - 1; i++) {
+    const curr = toPx(points[i]);
+    const next = toPx(points[i + 1]);
+    const midX = (curr.x + next.x) / 2;
+    const midY = (curr.y + next.y) / 2;
+    ctx.quadraticCurveTo(curr.x, curr.y, midX, midY);
+  }
+
+  const last = toPx(points[points.length - 1]);
+  ctx.lineTo(last.x, last.y);
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -87,7 +150,6 @@ function drawPoint(ctx: CanvasRenderingContext2D, subType: string, halfW: number
       ctx.fill();
       break;
     case 'cluster':
-      // 7개의 점 무리
       const offsets = [
         [0, 0],
         [-r * 0.7, -r * 0.6],
@@ -104,7 +166,6 @@ function drawPoint(ctx: CanvasRenderingContext2D, subType: string, halfW: number
       });
       break;
     case 'spray':
-      // 14개의 미세한 흩뿌림 점
       for (let i = 0; i < 14; i++) {
         const angle = (i * 2.39996) + 0.5;
         const dist = (i / 14) * r * 1.6;
@@ -237,7 +298,6 @@ function drawShape(ctx: CanvasRenderingContext2D, subType: string, halfW: number
       ctx.closePath();
       break;
     case 'blob':
-      // 유기적 부드러운 형태
       ctx.moveTo(0, -halfH);
       ctx.bezierCurveTo(halfW * 1.2, -halfH * 0.8, halfW * 0.9, halfH * 0.9, 0, halfH);
       ctx.bezierCurveTo(-halfW * 0.8, halfH * 1.1, -halfW * 1.1, -halfH * 0.5, 0, -halfH);
@@ -281,8 +341,8 @@ export function drawSelectionBox(
 ) {
   const { px, py, w, h } = toCanvasCoords(element, canvasWidth, canvasHeight);
   const pad = 12;
-  const boxW = w + pad * 2;
-  const boxH = h + pad * 2;
+  const boxW = Math.max(20, w + pad * 2);
+  const boxH = Math.max(20, h + pad * 2);
 
   ctx.save();
   ctx.translate(px, py);
