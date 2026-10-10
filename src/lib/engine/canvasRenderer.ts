@@ -57,11 +57,11 @@ export function drawElement(
       if (element.subType === 'freehand') {
         drawFreehandStroke(ctx, element, canvasWidth, canvasHeight);
       } else {
-        drawLine(ctx, element.subType, halfW, halfH);
+        drawLine(ctx, element, halfW, halfH);
       }
       break;
     case 'shape':
-      drawShape(ctx, element.subType, halfW, halfH, element.fill ?? true);
+      drawShape(ctx, element, halfW, halfH, element.fill ?? true);
       break;
   }
 
@@ -92,7 +92,6 @@ function drawFreehandStroke(
     ctx.lineWidth = element.strokeWidth || 6;
   }
 
-  // Points are percentage coordinates relative to element center
   const toPx = (pt: { x: number; y: number }) => ({
     x: (pt.x / 100) * canvasWidth,
     y: (pt.y / 100) * canvasHeight
@@ -111,7 +110,6 @@ function drawFreehandStroke(
   const first = toPx(points[0]);
   ctx.moveTo(first.x, first.y);
 
-  // Smooth quadratic curves between points
   for (let i = 1; i < points.length - 1; i++) {
     const curr = toPx(points[i]);
     const next = toPx(points[i + 1]);
@@ -183,7 +181,12 @@ function drawPoint(ctx: CanvasRenderingContext2D, subType: string, halfW: number
   }
 }
 
-function drawLine(ctx: CanvasRenderingContext2D, subType: string, halfW: number, halfH: number) {
+function drawLine(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: number, halfH: number) {
+  const subType = element.subType;
+  // 촘촘함 (Frequency / Segments)
+  const freq = Math.max(1, Math.min(16, element.frequency || 4));
+  const amp = element.amplitude || 1;
+
   switch (subType) {
     case 'straight':
       ctx.beginPath();
@@ -191,71 +194,97 @@ function drawLine(ctx: CanvasRenderingContext2D, subType: string, halfW: number,
       ctx.lineTo(halfW, 0);
       ctx.stroke();
       break;
+
     case 'dashed':
       ctx.save();
-      ctx.setLineDash([8, 8]);
+      const dashSize = Math.max(3, 14 / freq);
+      ctx.setLineDash([dashSize, dashSize]);
       ctx.beginPath();
       ctx.moveTo(-halfW, 0);
       ctx.lineTo(halfW, 0);
       ctx.stroke();
       ctx.restore();
       break;
+
     case 'smooth_curve':
+      // 촘촘함에 따른 다중 S-커브 또는 유연한 단일/복합 곡선
       ctx.beginPath();
-      ctx.moveTo(-halfW, halfH);
-      ctx.bezierCurveTo(-halfW * 0.5, -halfH * 1.5, halfW * 0.5, halfH * 1.5, halfW, -halfH);
-      ctx.stroke();
-      break;
-    case 'wave':
-      ctx.beginPath();
-      ctx.moveTo(-halfW, 0);
-      const segments = 4;
-      const segW = (halfW * 2) / segments;
-      for (let i = 0; i < segments; i++) {
-        const x1 = -halfW + i * segW;
-        const x2 = x1 + segW;
-        const sign = i % 2 === 0 ? 1 : -1;
-        ctx.quadraticCurveTo(x1 + segW / 2, sign * halfH, x2, 0);
+      if (freq <= 2) {
+        ctx.moveTo(-halfW, halfH * amp);
+        ctx.bezierCurveTo(-halfW * 0.5, -halfH * 1.5 * amp, halfW * 0.5, halfH * 1.5 * amp, halfW, -halfH * amp);
+      } else {
+        ctx.moveTo(-halfW, 0);
+        const segW = (halfW * 2) / freq;
+        for (let i = 0; i < freq; i++) {
+          const x1 = -halfW + i * segW;
+          const x2 = x1 + segW;
+          const sign = i % 2 === 0 ? 1 : -1;
+          const ctrlX = x1 + segW / 2;
+          const ctrlY = sign * halfH * amp;
+          ctx.quadraticCurveTo(ctrlX, ctrlY, x2, 0);
+        }
       }
       ctx.stroke();
       break;
-    case 'zigzag':
+
+    case 'wave':
+      // 촘촘함에 따른 물결선
       ctx.beginPath();
       ctx.moveTo(-halfW, 0);
-      const zSteps = 5;
-      const zStepW = (halfW * 2) / zSteps;
-      for (let i = 0; i < zSteps; i++) {
+      const waveSegW = (halfW * 2) / freq;
+      for (let i = 0; i < freq; i++) {
+        const x1 = -halfW + i * waveSegW;
+        const x2 = x1 + waveSegW;
+        const sign = i % 2 === 0 ? 1 : -1;
+        ctx.quadraticCurveTo(x1 + waveSegW / 2, sign * halfH * amp, x2, 0);
+      }
+      ctx.stroke();
+      break;
+
+    case 'zigzag':
+      // 촘촘함에 따른 날카로운 지그재그
+      ctx.beginPath();
+      ctx.moveTo(-halfW, 0);
+      const zStepW = (halfW * 2) / freq;
+      for (let i = 0; i < freq; i++) {
         const x = -halfW + (i + 0.5) * zStepW;
         const sign = i % 2 === 0 ? -1 : 1;
-        ctx.lineTo(x, sign * halfH);
+        ctx.lineTo(x, sign * halfH * amp);
       }
       ctx.lineTo(halfW, 0);
       ctx.stroke();
       break;
+
     case 'spiral':
+      // 촘촘함에 따른 소용돌이 밀도
       ctx.beginPath();
       const maxR = Math.min(halfW, halfH);
-      for (let t = 0; t < Math.PI * 6; t += 0.1) {
-        const currR = (t / (Math.PI * 6)) * maxR;
+      const totalRotations = Math.max(1, freq);
+      const totalSteps = totalRotations * 28;
+      for (let s = 0; s <= totalSteps; s++) {
+        const t = (s / totalSteps) * (Math.PI * 2 * totalRotations);
+        const currR = (s / totalSteps) * maxR;
         const sx = Math.cos(t) * currR;
         const sy = Math.sin(t) * currR;
-        if (t === 0) ctx.moveTo(sx, sy);
+        if (s === 0) ctx.moveTo(sx, sy);
         else ctx.lineTo(sx, sy);
       }
       ctx.stroke();
       break;
+
     case 'motion':
       ctx.beginPath();
-      const numLines = 3;
-      const lineGap = halfH / numLines;
-      for (let i = -1; i <= 1; i++) {
-        const yOffset = i * lineGap * 1.5;
-        const len = halfW * (1 - Math.abs(i) * 0.2);
+      const numLines = Math.max(2, Math.min(6, freq));
+      const lineGap = (halfH * 2) / (numLines + 1);
+      for (let i = 0; i < numLines; i++) {
+        const yOffset = -halfH + (i + 1) * lineGap;
+        const len = halfW * (0.8 + ((i % 2) * 0.2));
         ctx.moveTo(-len, yOffset);
         ctx.lineTo(len, yOffset);
       }
       ctx.stroke();
       break;
+
     default:
       ctx.beginPath();
       ctx.moveTo(-halfW, 0);
@@ -264,64 +293,91 @@ function drawLine(ctx: CanvasRenderingContext2D, subType: string, halfW: number,
   }
 }
 
-function drawShape(ctx: CanvasRenderingContext2D, subType: string, halfW: number, halfH: number, fill: boolean) {
+function drawShape(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: number, halfH: number, fill: boolean) {
+  const subType = element.subType;
   ctx.beginPath();
+
   switch (subType) {
-    case 'circle':
+    case 'circle': {
       const r = Math.min(halfW, halfH);
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       break;
-    case 'ellipse':
+    }
+
+    case 'ellipse': {
       ctx.ellipse(0, 0, halfW, halfH, 0, 0, Math.PI * 2);
       break;
-    case 'triangle':
+    }
+
+    case 'triangle': {
       ctx.moveTo(0, -halfH);
       ctx.lineTo(halfW, halfH);
       ctx.lineTo(-halfW, halfH);
       ctx.closePath();
       break;
-    case 'rect':
+    }
+
+    case 'rect': {
       ctx.rect(-halfW, -halfH, halfW * 2, halfH * 2);
       break;
-    case 'star':
-      const spikes = 5;
-      const outerR = Math.min(halfW, halfH);
-      const innerR = outerR * 0.45;
-      for (let i = 0; i < spikes * 2; i++) {
-        const radius = i % 2 === 0 ? outerR : innerR;
-        const angle = (i * Math.PI) / spikes - Math.PI / 2;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+    }
+
+    case 'polygon': {
+      // 3~10각 수 및 비대칭 왜곡(Distortion) 지원 추상 다면체
+      const sides = Math.max(3, Math.min(10, element.sides || 6));
+      const dist = Math.max(0, Math.min(1, element.distortion || 0));
+      const polyR = Math.min(halfW, halfH);
+
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+        // 시드형 왜곡 적용: 홀짝 및 인덱스에 따라 각 꼭짓점 반지름 변형
+        const mod = 1 + dist * (Math.sin(i * 2.5) * 0.45);
+        const r = polyR * mod;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
       break;
-    case 'blob':
-      ctx.moveTo(0, -halfH);
-      ctx.bezierCurveTo(halfW * 1.2, -halfH * 0.8, halfW * 0.9, halfH * 0.9, 0, halfH);
-      ctx.bezierCurveTo(-halfW * 0.8, halfH * 1.1, -halfW * 1.1, -halfH * 0.5, 0, -halfH);
+    }
+
+    case 'crystal': {
+      // 추상 결정체: 각진 다면 분할 형태
+      const sides = Math.max(4, Math.min(8, element.sides || 6));
+      const dist = element.distortion || 0.2;
+      const r = Math.min(halfW, halfH);
+
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides;
+        const radFactor = i % 2 === 0 ? 1 : 0.65 + dist * 0.3;
+        const x = Math.cos(angle) * r * radFactor;
+        const y = Math.sin(angle) * r * radFactor;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
       ctx.closePath();
       break;
-    case 'fragment':
+    }
+
+    case 'blob': {
+      const dist = element.distortion || 0;
+      ctx.moveTo(0, -halfH * (1 + dist * 0.2));
+      ctx.bezierCurveTo(halfW * (1.2 + dist * 0.3), -halfH * 0.8, halfW * 0.9, halfH * 0.9, 0, halfH);
+      ctx.bezierCurveTo(-halfW * 0.8, halfH * 1.1, -halfW * (1.1 + dist * 0.3), -halfH * 0.5, 0, -halfH * (1 + dist * 0.2));
+      ctx.closePath();
+      break;
+    }
+
+    case 'fragment': {
       ctx.moveTo(-halfW * 0.8, -halfH);
       ctx.lineTo(halfW, -halfH * 0.2);
       ctx.lineTo(halfW * 0.6, halfH);
       ctx.lineTo(-halfW, halfH * 0.7);
       ctx.closePath();
       break;
-    case 'polygon':
-      const sides = 6;
-      const polyR = Math.min(halfW, halfH);
-      for (let i = 0; i < sides; i++) {
-        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-        const x = Math.cos(angle) * polyR;
-        const y = Math.sin(angle) * polyR;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      break;
+    }
+
     default:
       ctx.rect(-halfW, -halfH, halfW * 2, halfH * 2);
   }
@@ -348,13 +404,11 @@ export function drawSelectionBox(
   ctx.translate(px, py);
   ctx.rotate((element.rotation * Math.PI) / 180);
 
-  // 선택 바운딩 박스 테두리 (파란색 점선)
   ctx.strokeStyle = '#3182CE';
   ctx.lineWidth = 1.8;
   ctx.setLineDash([5, 4]);
   ctx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
 
-  // 4개 모서리 크기 조절 핸들
   ctx.setLineDash([]);
   ctx.fillStyle = '#FFFFFF';
   ctx.strokeStyle = '#2B6CB0';
@@ -371,7 +425,6 @@ export function drawSelectionBox(
     ctx.strokeRect(cx - handleSize / 2, cy - handleSize / 2, handleSize, handleSize);
   });
 
-  // 상단 회전 핸들 (줄기 + 원)
   const stemLen = 22;
   ctx.beginPath();
   ctx.moveTo(0, -boxH / 2);

@@ -15,7 +15,7 @@ export const EMOTIONS: EmotionInfo[] = [
       recommendedElements: {
         point: '점 군집 (Cluster) - 생기 있게 튀어오르는 작은 점들의 무리',
         line: '부드러운 곡선 & 물결선 (Wave) - 경쾌하게 상승하는 생동감',
-        shape: '원 (Circle) & 별형 (Star) - 태양처럼 밝고 완전하게 확장하는 형태'
+        shape: '원 (Circle) & 변형 다각형 (Polygon) - 밝고 완전하게 확장하는 순수 조형 면'
       },
       recommendedColorsDesc: '고채도의 따뜻한 레몬노랑(#ECC94B), 생동하는 주황(#DD6B20), 화사한 진분홍(#ED64A6)',
       recommendedPrinciples: {
@@ -38,7 +38,7 @@ export const EMOTIONS: EmotionInfo[] = [
       recommendedElements: {
         point: '흩뿌림 (Spray) - 빛의 입자가 사방으로 확산되는 입체적 점들',
         line: '속도선 (Motion) - 중심에서 외곽으로 발산하는 강한 방향선',
-        shape: '별형 (Star) & 불꽃 파편 (Fragment) - 에너지가 폭발하는 각진 면'
+        shape: '추상 결정체 (Crystal) & 불꽃 파편 (Fragment) - 에너지가 각진 면으로 분할되는 형태'
       },
       recommendedColorsDesc: '극적인 대비를 이루는 다홍(#E53E3E), 레몬노랑(#ECC94B), 코발트블루(#3182CE)',
       recommendedPrinciples: {
@@ -295,7 +295,7 @@ export const EMOTIONS: EmotionInfo[] = [
       recommendedElements: {
         point: '흩뿌림 (Spray) - 아스라이 멀어져가는 기억의 잔상',
         line: '점선 (Dashed) - 닿지 못하고 끊어지며 이어지는 시선의 실타래',
-        shape: '별형 (Star) & 유기적 블롭 - 밤하늘의 별처럼 아련히 빛나는 면'
+        shape: '추상 결정체 (Crystal) & 유기적 블롭 - 밤하늘의 결정처럼 아련히 떠 있는 면'
       },
       recommendedColorsDesc: '몽환적인 바이올렛(#805AD5), 자주(#D53F8C), 아련한 살구빛(#FBD38D)',
       recommendedPrinciples: {

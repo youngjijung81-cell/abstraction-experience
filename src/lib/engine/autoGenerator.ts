@@ -24,7 +24,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'shape', subType: 'blob', x: -20, y: -20, width: 26, height: 22, rotation: 45, color: pickColor(3), opacity: 0.75, fill: true, zIndex: 4 },
         { id: uid(), type: 'point', subType: 'cluster', x: 22, y: 20, width: 22, height: 22, rotation: 0, color: pickColor(1), opacity: 0.9, zIndex: 5 },
         { id: uid(), type: 'point', subType: 'spray', x: -25, y: 10, width: 28, height: 28, rotation: 0, color: pickColor(0), opacity: 0.7, zIndex: 6 },
-        { id: uid(), type: 'shape', subType: 'star', x: 5, y: -28, width: 16, height: 16, rotation: 12, color: pickColor(2), opacity: 0.9, fill: true, zIndex: 7 }
+        { id: uid(), type: 'shape', subType: 'polygon', sides: 5, distortion: 0.15, x: 5, y: -28, width: 16, height: 16, rotation: 12, color: pickColor(2), opacity: 0.9, fill: true, zIndex: 7 }
       );
       break;
     }
@@ -32,7 +32,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
     case 'ecstasy': {
       // 폭발적인 방사형과 별형
       elements.push(
-        { id: uid(), type: 'shape', subType: 'star', x: 0, y: 0, width: 44, height: 44, rotation: 0, color: pickColor(0), opacity: 0.9, fill: true, zIndex: 1 },
+        { id: uid(), type: 'shape', subType: 'crystal', sides: 6, distortion: 0.2, x: 0, y: 0, width: 44, height: 44, rotation: 0, color: pickColor(0), opacity: 0.9, fill: true, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'circle', x: 0, y: 0, width: 26, height: 26, rotation: 0, color: pickColor(1), opacity: 0.85, fill: true, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'motion', x: -25, y: -22, width: 35, height: 15, rotation: 45, color: pickColor(2), opacity: 0.9, strokeWidth: 5, zIndex: 3 },
         { id: uid(), type: 'line', subType: 'motion', x: 25, y: 22, width: 35, height: 15, rotation: 45, color: pickColor(2), opacity: 0.9, strokeWidth: 5, zIndex: 4 },
@@ -160,7 +160,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
       // 그리움: 뻗어가는 점선과 아련한 보라
       elements.push(
         { id: uid(), type: 'line', subType: 'dashed', x: -5, y: 0, width: 65, height: 2, rotation: -35, color: pickColor(0), opacity: 0.85, strokeWidth: 3, zIndex: 1 },
-        { id: uid(), type: 'shape', subType: 'star', x: 22, y: -22, width: 18, height: 18, rotation: 20, color: pickColor(1), opacity: 0.8, fill: true, zIndex: 2 },
+        { id: uid(), type: 'shape', subType: 'crystal', sides: 4, distortion: 0.12, x: 22, y: -22, width: 18, height: 18, rotation: 20, color: pickColor(1), opacity: 0.8, fill: true, zIndex: 2 },
         { id: uid(), type: 'shape', subType: 'blob', x: -18, y: 18, width: 32, height: 26, rotation: 15, color: pickColor(2), opacity: 0.5, fill: true, zIndex: 3 },
         { id: uid(), type: 'point', subType: 'spray', x: 0, y: -10, width: 26, height: 26, rotation: 0, color: pickColor(3), opacity: 0.65, zIndex: 4 }
       );
@@ -195,7 +195,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
       // 혼란: 통제되지 않은 파편들과 선들
       elements.push(
         { id: uid(), type: 'shape', subType: 'fragment', x: -15, y: -15, width: 34, height: 34, rotation: 45, color: pickColor(0), opacity: 0.85, fill: true, zIndex: 1 },
-        { id: uid(), type: 'shape', subType: 'star', x: 18, y: 18, width: 32, height: 32, rotation: -30, color: pickColor(1), opacity: 0.85, fill: true, zIndex: 2 },
+        { id: uid(), type: 'shape', subType: 'crystal', sides: 6, distortion: 0.35, x: 18, y: 18, width: 32, height: 32, rotation: -30, color: pickColor(1), opacity: 0.85, fill: true, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'zigzag', x: 0, y: 0, width: 55, height: 30, rotation: 60, color: pickColor(2), opacity: 0.9, strokeWidth: 5, zIndex: 3 },
         { id: uid(), type: 'line', subType: 'motion', x: -20, y: 20, width: 38, height: 15, rotation: -40, color: pickColor(3), opacity: 0.8, strokeWidth: 4, zIndex: 4 },
         { id: uid(), type: 'shape', subType: 'polygon', x: 15, y: -22, width: 28, height: 28, rotation: 15, color: pickColor(0), opacity: 0.8, fill: true, zIndex: 5 },

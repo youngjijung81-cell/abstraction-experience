@@ -4,7 +4,7 @@ export type ElementType = 'point' | 'line' | 'shape';
 
 export type PointSubType = 'single' | 'cluster' | 'spray' | 'heavy' | 'diamond';
 export type LineSubType = 'straight' | 'smooth_curve' | 'wave' | 'zigzag' | 'spiral' | 'dashed' | 'motion' | 'freehand';
-export type ShapeSubType = 'circle' | 'ellipse' | 'triangle' | 'rect' | 'star' | 'blob' | 'fragment' | 'polygon';
+export type ShapeSubType = 'circle' | 'ellipse' | 'triangle' | 'rect' | 'polygon' | 'blob' | 'fragment' | 'crystal';
 
 export type BrushStyle = 'pen' | 'brush' | 'marker' | 'glow';
 
@@ -19,32 +19,37 @@ export interface ArtElement {
   rotation: number; // 0 to 360 degrees
   color: string;
   opacity: number; // 0.1 to 1.0
-  strokeWidth?: number;
+  strokeWidth?: number; // 선 굵기 (1 ~ 35)
   fill?: boolean;
   zIndex: number;
   brushStyle?: BrushStyle;
-  // Freehand stroke points (relative to element center in percentage)
+
+  // 선(Line) 세부 조형 파라미터
+  frequency?: number; // 곡선/물결 촘촘함 및 주기 (1 ~ 16)
+  amplitude?: number; // 곡선 굴곡 진폭 (0.2 ~ 2.5)
+
+  // 면/다각형(Shape) 세부 조형 파라미터
+  sides?: number; // 다각형 꼭짓점 수 (3 ~ 10)
+  distortion?: number; // 비대칭 왜곡/찌그러짐 비율 (0 ~ 1)
+
+  // 자유 드로잉 획 점들
   points?: { x: number; y: number }[];
 }
 
 export type EmotionKey =
-  // 긍정/생명력
   | 'joy'
   | 'ecstasy'
   | 'flutter'
   | 'passion'
   | 'hope'
-  // 평온/안정
   | 'serenity'
   | 'rest'
   | 'calm'
   | 'cozy'
-  // 슬픔/내면
   | 'sorrow'
   | 'void'
   | 'solitude'
   | 'longing'
-  // 긴장/격정
   | 'rage'
   | 'anxiety'
   | 'chaos';

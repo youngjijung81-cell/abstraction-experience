@@ -71,18 +71,18 @@ export const LINE_TEMPLATES: ElementTemplate[] = [
   {
     type: 'line',
     subType: 'smooth_curve',
-    name: '부드러운 곡선 (Curve)',
+    name: '유려한 곡선 (Curve)',
     icon: '～',
-    description: '자연스럽고 우아하며 감성적인 흐름을 만드는 유연한 곡선',
+    description: '자연스럽고 우아하며 감성적인 흐름을 만드는 유연한 곡선 (촘촘함 조절 가능)',
     defaultWidth: 35,
     defaultHeight: 16
   },
   {
     type: 'line',
     subType: 'wave',
-    name: '물결선 (Wave)',
+    name: '율동 물결선 (Wave)',
     icon: '〰',
-    description: '율동감과 음악적인 박자를 담아내는 연속된 파동선',
+    description: '음악적인 박자와 파동을 담는 선 (파동 수와 촘촘함 실시간 조절 가능)',
     defaultWidth: 40,
     defaultHeight: 12
   },
@@ -91,7 +91,7 @@ export const LINE_TEMPLATES: ElementTemplate[] = [
     subType: 'zigzag',
     name: '번개 지그재그',
     icon: '⚡',
-    description: '충격, 긴장, 분노와 번뜩이는 에너지를 표출하는 날카로운 꺾임선',
+    description: '충격, 긴장, 분노와 번뜩이는 에너지를 표출하는 날카로운 꺾임선 (각 주기 조절)',
     defaultWidth: 35,
     defaultHeight: 18
   },
@@ -100,7 +100,7 @@ export const LINE_TEMPLATES: ElementTemplate[] = [
     subType: 'spiral',
     name: '소용돌이 (Spiral)',
     icon: '🌀',
-    description: '내면으로 수렴하거나 외부로 확장되는 회오리형 선',
+    description: '내면으로 수렴하거나 외부로 확장되는 회오리형 선 (회전 밀도 조절)',
     defaultWidth: 26,
     defaultHeight: 26
   },
@@ -163,12 +163,21 @@ export const SHAPE_TEMPLATES: ElementTemplate[] = [
   },
   {
     type: 'shape',
-    subType: 'star',
-    name: '성형 (Star Fragment)',
-    icon: '✦',
-    description: '빛의 발산이나 특별한 강조점을 찍어주는 방사형 면',
-    defaultWidth: 20,
-    defaultHeight: 20
+    subType: 'polygon',
+    name: '변형 다각형 (Polygon)',
+    icon: '⬡',
+    description: '3~10각 수 및 비대칭 왜곡을 자유롭게 변형할 수 있는 추상 다면체',
+    defaultWidth: 24,
+    defaultHeight: 24
+  },
+  {
+    type: 'shape',
+    subType: 'crystal',
+    name: '추상 결정체 (Crystal)',
+    icon: '⬩',
+    description: '기하학적 면분할과 각진 모서리를 가진 현대 미술식 입체 조형 면',
+    defaultWidth: 22,
+    defaultHeight: 22
   },
   {
     type: 'shape',
@@ -182,19 +191,10 @@ export const SHAPE_TEMPLATES: ElementTemplate[] = [
   {
     type: 'shape',
     subType: 'fragment',
-    name: '불꽃 파편 (Fragment)',
+    name: '추상 파편 (Fragment)',
     icon: '▲',
-    description: '폭발이나 해체로 튀어나온 듯한 파편형 다각형',
-    defaultWidth: 18,
+    description: '형태가 해체되거나 튀어나온 듯한 입체파풍 파편형 조각',
+    defaultWidth: 20,
     defaultHeight: 24
-  },
-  {
-    type: 'shape',
-    subType: 'polygon',
-    name: '다각형 (Polygon)',
-    icon: '⬡',
-    description: '몬드리안이나 입체파 회화의 기하학적 분할을 닮은 면',
-    defaultWidth: 25,
-    defaultHeight: 25
   }
 ];
