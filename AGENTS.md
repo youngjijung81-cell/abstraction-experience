@@ -24,4 +24,4 @@
   - Branch: `main`
 - **Vercel**:
   - Project: `abstraction-experience`
-  - Production URL: (배포 후 기록)
+  - Production URL: `https://abstraction-experience.vercel.app`
