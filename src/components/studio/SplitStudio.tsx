@@ -233,6 +233,22 @@ export const SplitStudio: React.FC = () => {
     pushHistory(nextElements);
   };
 
+  // 다중 선택 요소 일괄 속성 변경 (크기, 회전, 투명도, 선굵기, 면채우기 등)
+  const handleUpdateMultipleProps = (
+    patch: Partial<ArtElement> | ((el: ArtElement) => Partial<ArtElement>)
+  ) => {
+    if (selectedIds.length === 0) return;
+    const nextElements = elements.map((el) => {
+      if (selectedIds.includes(el.id)) {
+        const updates = typeof patch === 'function' ? patch(el) : patch;
+        return { ...el, ...updates };
+      }
+      return el;
+    });
+    setElements(nextElements);
+    pushHistory(nextElements);
+  };
+
   // 캔버스 드래그 중 실시간 업데이트 (단일)
   const handleUpdateElementDirect = (id: string, updated: Partial<ArtElement>, shouldPushHistory?: boolean) => {
     const nextElements = elements.map((el) => {
@@ -345,6 +361,31 @@ export const SplitStudio: React.FC = () => {
     pushHistory(nextElements);
   };
 
+  // 다중 선택 요소 일괄 레이어 앞으로/뒤로
+  const handleBringForwardMultiple = () => {
+    if (selectedIds.length === 0) return;
+    const nextElements = elements.map((el) => {
+      if (selectedIds.includes(el.id)) {
+        return { ...el, zIndex: (el.zIndex || 0) + 1 };
+      }
+      return el;
+    });
+    setElements(nextElements);
+    pushHistory(nextElements);
+  };
+
+  const handleSendBackwardMultiple = () => {
+    if (selectedIds.length === 0) return;
+    const nextElements = elements.map((el) => {
+      if (selectedIds.includes(el.id)) {
+        return { ...el, zIndex: Math.max(0, (el.zIndex || 0) - 1) };
+      }
+      return el;
+    });
+    setElements(nextElements);
+    pushHistory(nextElements);
+  };
+
   // 전체 초기화
   const handleClearAll = () => {
     if (window.confirm('캔버스를 모두 비우시겠습니까?')) {
@@ -376,6 +417,7 @@ export const SplitStudio: React.FC = () => {
   };
 
   const selectedElement = elements.find((el) => el.id === selectedId) || null;
+  const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
 
   return (
     <div className="w-screen h-screen flex flex-col md:flex-row overflow-hidden bg-white">
@@ -394,14 +436,19 @@ export const SplitStudio: React.FC = () => {
           canvasBgColor={canvasBgColor}
           onBgColorChange={setCanvasBgColor}
           selectedElement={selectedElement}
+          selectedElements={selectedElements}
           selectedCount={selectedIds.length}
           onUpdateElement={handleUpdateElement}
+          onUpdateMultipleProps={handleUpdateMultipleProps}
           onUpdateMultipleColors={handleUpdateMultipleColors}
           onDeleteElement={handleDeleteElement}
           onDeleteMultiple={handleDeleteSelected}
           onDuplicateElement={handleDuplicateElement}
+          onDuplicateMultiple={handleDuplicateSelected}
           onBringForward={handleBringForward}
+          onBringForwardMultiple={handleBringForwardMultiple}
           onSendBackward={handleSendBackward}
+          onSendBackwardMultiple={handleSendBackwardMultiple}
           onDeselect={() => setSelectedIds([])}
           onOpenGuide={() => setIsGuideOpen(true)}
         />

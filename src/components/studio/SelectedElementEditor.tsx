@@ -3,63 +3,109 @@
 import React from 'react';
 import { ArtElement } from '@/lib/types';
 import { ART_COLORS } from '@/lib/constants/colors';
-import { Trash2, Copy, ArrowUp, ArrowDown, Sliders, Activity, Hexagon } from 'lucide-react';
+import { Trash2, Copy, ArrowUp, ArrowDown, Sliders, Activity, Hexagon, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface Props {
   element: ArtElement | null;
+  selectedElements?: ArtElement[];
   selectedCount?: number;
   onUpdate: (updated: Partial<ArtElement>) => void;
+  onUpdateMultipleProps?: (
+    patch: Partial<ArtElement> | ((el: ArtElement) => Partial<ArtElement>)
+  ) => void;
   onUpdateMultipleColors?: (color: string) => void;
   onDelete: (id: string) => void;
   onDeleteMultiple?: () => void;
   onDuplicate: (id: string) => void;
+  onDuplicateMultiple?: () => void;
   onBringForward: (id: string) => void;
+  onBringForwardMultiple?: () => void;
   onSendBackward: (id: string) => void;
+  onSendBackwardMultiple?: () => void;
   onDeselect: () => void;
 }
 
 export const SelectedElementEditor: React.FC<Props> = ({
   element,
+  selectedElements = [],
   selectedCount = 1,
   onUpdate,
+  onUpdateMultipleProps,
   onUpdateMultipleColors,
   onDelete,
   onDeleteMultiple,
   onDuplicate,
+  onDuplicateMultiple,
   onBringForward,
+  onBringForwardMultiple,
   onSendBackward,
+  onSendBackwardMultiple,
   onDeselect,
 }) => {
-  // 다중 선택 상태일 때 전용 일괄 제어 UI
+  // 다중 선택 상태일 때 전용 일괄 제어 UI (색상, 형태, 크기, 회전, 투명도, 선굵기, 레이어, 복제)
   if (selectedCount > 1) {
+    const hasLine = selectedElements.length > 0
+      ? selectedElements.some((e) => e.type === 'line')
+      : true;
+    const hasShape = selectedElements.length > 0
+      ? selectedElements.some((e) => e.type === 'shape')
+      : true;
+
     return (
       <div className="bg-white border-2 border-indigo-400 rounded-xl p-3.5 shadow-sm space-y-3">
+        {/* 1. 상단 바: 요소 개수 정보 및 일괄 액션 버튼들 */}
         <div className="flex items-center justify-between border-b pb-2">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
             <span className="text-xs font-extrabold text-indigo-900">
-              다중 선택됨 ({selectedCount}개 조형 요소)
+              다중 선택됨 ({selectedCount}개 요소)
             </span>
           </div>
           <div className="flex items-center gap-1">
+            {/* 일괄 복제 */}
+            <button
+              onClick={onDuplicateMultiple}
+              title="선택된 모든 요소 일괄 복제"
+              className="p-1 hover:bg-indigo-50 rounded text-gray-600 hover:text-indigo-600"
+            >
+              <Copy size={13} />
+            </button>
+            {/* 레이어 앞으로 */}
+            <button
+              onClick={onBringForwardMultiple}
+              title="선택된 모든 요소 앞으로 가져오기"
+              className="p-1 hover:bg-indigo-50 rounded text-gray-600 hover:text-indigo-600"
+            >
+              <ArrowUp size={13} />
+            </button>
+            {/* 레이어 뒤로 */}
+            <button
+              onClick={onSendBackwardMultiple}
+              title="선택된 모든 요소 뒤로 보내기"
+              className="p-1 hover:bg-indigo-50 rounded text-gray-600 hover:text-indigo-600"
+            >
+              <ArrowDown size={13} />
+            </button>
+            {/* 일괄 삭제 */}
             <button
               onClick={onDeleteMultiple}
               title="선택된 모든 요소 일괄 삭제"
-              className="p-1 hover:bg-red-50 rounded text-red-600 hover:text-red-700 text-xs font-bold flex items-center gap-1"
+              className="p-1 hover:bg-red-50 rounded text-red-600 hover:text-red-700 text-xs font-bold flex items-center gap-0.5"
             >
               <Trash2 size={13} />
-              <span>일괄삭제</span>
+              <span className="text-[10px]">삭제</span>
             </button>
+            {/* 선택 해제 */}
             <button
               onClick={onDeselect}
               className="text-[11px] text-gray-400 hover:text-gray-700 ml-1 underline"
             >
-              선택해제
+              해제
             </button>
           </div>
         </div>
 
-        {/* 일괄 색상 변경 팔레트 */}
+        {/* 2. 일괄 색상 변경 팔레트 & 컬러 피커 */}
         <div>
           <label className="text-[11px] font-semibold text-gray-600 block mb-1">
             선택된 모든 요소 색상 일괄 변경
@@ -69,18 +115,229 @@ export const SelectedElementEditor: React.FC<Props> = ({
               <button
                 key={c.hex}
                 onClick={() => {
-                  if (onUpdateMultipleColors) onUpdateMultipleColors(c.hex);
+                  if (onUpdateMultipleColors) {
+                    onUpdateMultipleColors(c.hex);
+                  } else if (onUpdateMultipleProps) {
+                    onUpdateMultipleProps({ color: c.hex });
+                  }
                 }}
                 title={c.name}
                 style={{ backgroundColor: c.hex }}
                 className="w-5 h-5 rounded-full border border-gray-300 transition-transform hover:scale-110"
               />
             ))}
+            <input
+              type="color"
+              defaultValue="#3B82F6"
+              onChange={(e) => {
+                const hex = e.target.value;
+                if (onUpdateMultipleColors) {
+                  onUpdateMultipleColors(hex);
+                } else if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps({ color: hex });
+                }
+              }}
+              className="w-5 h-5 rounded cursor-pointer border border-gray-300 p-0"
+              title="직접 색상 선택"
+            />
           </div>
         </div>
 
-        <p className="text-[11px] text-indigo-600 bg-indigo-50 p-2 rounded-lg leading-relaxed">
-          💡 캔버스에서 드래그하여 선택된 {selectedCount}개의 요소들을 한꺼번에 이동할 수 있습니다.
+        {/* 3. 형태변형: 크기(스케일) 일괄 조절 */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 mb-1">
+            <span className="flex items-center gap-1">
+              <ZoomIn size={12} className="text-indigo-600" />
+              <span>크기 일괄 변형</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    width: Math.max(2, el.width * 0.8),
+                    height: Math.max(2, el.height * 0.8)
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              -20%
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    width: Math.max(2, el.width * 0.9),
+                    height: Math.max(2, el.height * 0.9)
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              -10%
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    width: Math.min(100, el.width * 1.1),
+                    height: Math.min(100, el.height * 1.1)
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              +10%
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    width: Math.min(100, el.width * 1.2),
+                    height: Math.min(100, el.height * 1.2)
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              +20%
+            </button>
+          </div>
+        </div>
+
+        {/* 4. 형태변형: 회전 각도 일괄 조절 */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 mb-1">
+            <span className="flex items-center gap-1">
+              <RotateCw size={12} className="text-indigo-600" />
+              <span>회전 일괄 변형</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1">
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    rotation: (el.rotation - 45 + 360) % 360
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              -45°
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    rotation: (el.rotation + 45) % 360
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              +45°
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    rotation: (el.rotation + 90) % 360
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              90°
+            </button>
+            <button
+              onClick={() => {
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) => ({
+                    rotation: (el.rotation + 180) % 360
+                  }));
+                }
+              }}
+              className="py-1 px-1 bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded text-[11px] font-bold border transition text-center"
+            >
+              180°
+            </button>
+          </div>
+        </div>
+
+        {/* 5. 투명도 일괄 슬라이더 */}
+        <div>
+          <div className="flex justify-between text-[11px] text-gray-600 mb-0.5">
+            <span>투명도 일괄 조절</span>
+            <span className="font-mono text-indigo-600">10% ~ 100%</span>
+          </div>
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            defaultValue="0.85"
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (onUpdateMultipleProps) {
+                onUpdateMultipleProps({ opacity: val });
+              }
+            }}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+          />
+        </div>
+
+        {/* 6. 선(Line) 요소 포함 시 선 굵기 일괄 조절 */}
+        {hasLine && (
+          <div className="pt-2 border-t border-gray-100">
+            <div className="flex justify-between text-[11px] text-gray-600 mb-0.5">
+              <span>선 굵기 일괄 조절 (선 요소)</span>
+              <span className="font-mono text-indigo-600">1 ~ 35px</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="35"
+              defaultValue="5"
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (onUpdateMultipleProps) {
+                  onUpdateMultipleProps((el) =>
+                    el.type === 'line' ? { strokeWidth: val } : {}
+                  );
+                }
+              }}
+              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            />
+          </div>
+        )}
+
+        {/* 7. 면(Shape) 요소 포함 시 면 채우기 토글 */}
+        {hasShape && (
+          <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+            <label className="flex items-center gap-1.5 text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                defaultChecked={true}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  if (onUpdateMultipleProps) {
+                    onUpdateMultipleProps((el) =>
+                      el.type === 'shape' ? { fill: checked } : {}
+                    );
+                  }
+                }}
+                className="rounded text-indigo-600"
+              />
+              <span className="text-[11px]">면 채우기 일괄 적용 (해제 시 외곽선만 표현)</span>
+            </label>
+          </div>
+        )}
+
+        <p className="text-[11px] text-indigo-700 bg-indigo-50 p-2.5 rounded-lg leading-relaxed border border-indigo-100">
+          💡 <strong>캔버스 제어:</strong> 모서리 4개 조절점(크기 변형), 상단 핸들(회전), 또는 요소를 잡고 직접 드래그(함께 이동)할 수 있습니다.
         </p>
       </div>
     );

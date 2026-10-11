@@ -8,9 +8,11 @@ import {
   drawElement,
   drawSelectionBox,
   drawMarqueeBox,
-  drawMultiSelectionOverlay
+  drawMultiSelectionOverlay,
+  getMultiSelectionBounds,
+  MultiBounds
 } from '@/lib/engine/canvasRenderer';
-import { findTopHitElement, findElementsByBox, HandleType } from '@/lib/engine/hitTest';
+import { findTopHitElement, findElementsByBox, hitTestMultiSelectionBounds, HandleType } from '@/lib/engine/hitTest';
 import {
   Download,
   Share2,
@@ -32,6 +34,33 @@ import Link from 'next/link';
 
 function uid(): string {
   return 'el_' + Math.random().toString(36).substring(2, 9);
+}
+
+interface MultiElementInitialState {
+  id: string;
+  initialX: number;
+  initialY: number;
+  initialWidth: number;
+  initialHeight: number;
+  initialRotation: number;
+}
+
+interface DragState {
+  isDragging: boolean;
+  elementId?: string;
+  handle: HandleType;
+  startX: number;
+  startY: number;
+  initialX: number;
+  initialY: number;
+  initialWidth: number;
+  initialHeight: number;
+  initialRotation: number;
+  multiElements?: MultiElementInitialState[];
+  groupCenterPct?: { x: number; y: number };
+  groupBounds?: MultiBounds;
+  isClickOnly?: boolean;
+  clickedElementId?: string;
 }
 
 interface Props {
@@ -108,20 +137,8 @@ export const RightCanvasStage: React.FC<Props> = ({
     currY: number;
   } | null>(null);
 
-  // Drag & Transform State (꼭짓점 자유 변형 및 다중 이동)
-  const [dragState, setDragState] = useState<{
-    isDragging: boolean;
-    elementId: string;
-    handle: HandleType;
-    startX: number;
-    startY: number;
-    initialX: number;
-    initialY: number;
-    initialWidth: number;
-    initialHeight: number;
-    initialRotation: number;
-    multiInitialPositions?: { id: string; initialX: number; initialY: number }[];
-  } | null>(null);
+  // Drag & Transform State (꼭짓점 자유 변형 및 다중 이동/스케일/회전)
+  const [dragState, setDragState] = useState<DragState | null>(null);
 
   const currEmotion = EMOTIONS.find((e) => e.key === selectedEmotion);
 
@@ -287,27 +304,164 @@ export const RightCanvasStage: React.FC<Props> = ({
     const currentLogicalW = canvas.width / dpr;
     const currentLogicalH = canvas.height / dpr;
 
+    // 1. 자유 드로잉 모드
     if (activeTool === 'draw') {
-      // 자유 드로잉 시작 (상대 좌표 백분율 계산)
       const pctX = ((clickX - currentLogicalW / 2) / currentLogicalW) * 100;
       const pctY = ((clickY - currentLogicalH / 2) / currentLogicalH) * 100;
       setActiveStroke([{ x: pctX, y: pctY }]);
       return;
     }
 
-    if (activeTool === 'multi') {
-      // ★ 다중 선택 도구 모드: 어디서나 드래그하여 영역 사각형을 만들거나, 탭하여 요소를 토글 선택
-      setMarqueeState({
-        isSelecting: true,
-        startX: clickX,
-        startY: clickY,
-        currX: clickX,
-        currY: clickY
-      });
-      return;
+    // 2. 다중 선택 상태일 때: 모서리 조절 핸들(nw, ne, se, sw) 및 회전 핸들(rotate) 최우선 히트 테스트
+    if (currentSelectedIds.length > 1) {
+      const bounds = getMultiSelectionBounds(
+        elements,
+        currentSelectedIds,
+        currentLogicalW,
+        currentLogicalH
+      );
+      if (bounds) {
+        const groupHit = hitTestMultiSelectionBounds(clickX, clickY, bounds);
+        if (groupHit.hit && groupHit.handle && groupHit.handle !== 'move') {
+          const multiElements = currentSelectedIds
+            .map((id) => {
+              const el = elements.find((e) => e.id === id);
+              return el
+                ? {
+                    id: el.id,
+                    initialX: el.x,
+                    initialY: el.y,
+                    initialWidth: el.width,
+                    initialHeight: el.height,
+                    initialRotation: el.rotation
+                  }
+                : null;
+            })
+            .filter(Boolean) as MultiElementInitialState[];
+
+          const groupCenterPct = {
+            x: ((bounds.cx - currentLogicalW / 2) / currentLogicalW) * 100,
+            y: ((bounds.cy - currentLogicalH / 2) / currentLogicalH) * 100
+          };
+
+          setDragState({
+            isDragging: true,
+            handle: groupHit.handle,
+            startX: clickX,
+            startY: clickY,
+            initialX: bounds.cx,
+            initialY: bounds.cy,
+            initialWidth: bounds.w,
+            initialHeight: bounds.h,
+            initialRotation: 0,
+            multiElements,
+            groupCenterPct,
+            groupBounds: bounds,
+            isClickOnly: false
+          });
+          return;
+        }
+      }
     }
 
-    // 선택 & 자유변형 모드
+    // 3. 다중 선택 도구 ('multi') 모드
+    if (activeTool === 'multi') {
+      const hit = findTopHitElement(
+        clickX,
+        clickY,
+        elements,
+        null,
+        currentLogicalW,
+        currentLogicalH
+      );
+
+      if (hit.elementId) {
+        const targetId = hit.elementId;
+        const isAlreadySelected = currentSelectedIds.includes(targetId);
+
+        if (isAlreadySelected) {
+          // 이미 선택된 요소 클릭: 드래그 시 그룹 전체 이동, 단순 탭 시 선택 해제 토글 준비
+          const multiElements = currentSelectedIds
+            .map((id) => {
+              const el = elements.find((e) => e.id === id);
+              return el
+                ? {
+                    id: el.id,
+                    initialX: el.x,
+                    initialY: el.y,
+                    initialWidth: el.width,
+                    initialHeight: el.height,
+                    initialRotation: el.rotation
+                  }
+                : null;
+            })
+            .filter(Boolean) as MultiElementInitialState[];
+
+          setDragState({
+            isDragging: true,
+            handle: 'move',
+            startX: clickX,
+            startY: clickY,
+            initialX: clickX,
+            initialY: clickY,
+            initialWidth: 0,
+            initialHeight: 0,
+            initialRotation: 0,
+            multiElements,
+            clickedElementId: targetId,
+            isClickOnly: true
+          });
+          return;
+        } else {
+          // 미선택 요소 클릭: 즉시 다중 선택 목록에 추가! ("다중선택도구를 클릭한 후 요소요소를 누르면 선택되게")
+          const nextIds = [...currentSelectedIds, targetId];
+          updateSelection(nextIds);
+
+          const multiElements = nextIds
+            .map((id) => {
+              const el = elements.find((e) => e.id === id);
+              return el
+                ? {
+                    id: el.id,
+                    initialX: el.x,
+                    initialY: el.y,
+                    initialWidth: el.width,
+                    initialHeight: el.height,
+                    initialRotation: el.rotation
+                  }
+                : null;
+            })
+            .filter(Boolean) as MultiElementInitialState[];
+
+          setDragState({
+            isDragging: true,
+            handle: 'move',
+            startX: clickX,
+            startY: clickY,
+            initialX: clickX,
+            initialY: clickY,
+            initialWidth: 0,
+            initialHeight: 0,
+            initialRotation: 0,
+            multiElements,
+            isClickOnly: false
+          });
+          return;
+        }
+      } else {
+        // 빈 공간 클릭: 마키 영역(Box Selection) 드래그 시작
+        setMarqueeState({
+          isSelecting: true,
+          startX: clickX,
+          startY: clickY,
+          currX: clickX,
+          currY: clickY
+        });
+        return;
+      }
+    }
+
+    // 4. 일반 선택 모드 ('select')
     const activeSingleId = currentSelectedIds.length === 1 ? currentSelectedIds[0] : null;
     const hit = findTopHitElement(
       clickX,
@@ -331,17 +485,23 @@ export const RightCanvasStage: React.FC<Props> = ({
         return;
       }
 
-      // 이미 다중 선택된 요소 중 하나를 잡고 이동하려는 경우
-      const isAlreadyInMulti = currentSelectedIds.includes(hit.elementId);
-
-      if (isAlreadyInMulti && currentSelectedIds.length > 1 && hit.handle === 'move') {
-        // 다중 선택 요소 전체 함께 이동 준비
-        const multiPositions = currentSelectedIds
+      // 이미 다중 선택된 그룹 중 하나를 클릭하여 이동하려는 경우
+      if (currentSelectedIds.includes(hit.elementId) && currentSelectedIds.length > 1) {
+        const multiElements = currentSelectedIds
           .map((id) => {
             const el = elements.find((e) => e.id === id);
-            return el ? { id: el.id, initialX: el.x, initialY: el.y } : null;
+            return el
+              ? {
+                  id: el.id,
+                  initialX: el.x,
+                  initialY: el.y,
+                  initialWidth: el.width,
+                  initialHeight: el.height,
+                  initialRotation: el.rotation
+                }
+              : null;
           })
-          .filter(Boolean) as { id: string; initialX: number; initialY: number }[];
+          .filter(Boolean) as MultiElementInitialState[];
 
         setDragState({
           isDragging: true,
@@ -354,27 +514,30 @@ export const RightCanvasStage: React.FC<Props> = ({
           initialWidth: target.width,
           initialHeight: target.height,
           initialRotation: target.rotation,
-          multiInitialPositions: multiPositions
+          multiElements,
+          isClickOnly: false
         });
-      } else {
-        // 단일 선택으로 전환 및 변형 준비
-        updateSelection([hit.elementId]);
-
-        setDragState({
-          isDragging: true,
-          elementId: target.id,
-          handle: hit.handle,
-          startX: clickX,
-          startY: clickY,
-          initialX: target.x,
-          initialY: target.y,
-          initialWidth: target.width,
-          initialHeight: target.height,
-          initialRotation: target.rotation
-        });
+        return;
       }
+
+      // 단일 선택으로 전환 및 변형 준비
+      updateSelection([hit.elementId]);
+
+      setDragState({
+        isDragging: true,
+        elementId: target.id,
+        handle: hit.handle,
+        startX: clickX,
+        startY: clickY,
+        initialX: target.x,
+        initialY: target.y,
+        initialWidth: target.width,
+        initialHeight: target.height,
+        initialRotation: target.rotation,
+        isClickOnly: false
+      });
     } else {
-      // 빈 공간 클릭 -> 선택 해제 및 마키 영역 선택(Marquee Box) 시작
+      // 빈 공간 클릭: 선택 해제 및 마키 영역 선택 시작
       updateSelection([]);
       setMarqueeState({
         isSelecting: true,
@@ -416,23 +579,27 @@ export const RightCanvasStage: React.FC<Props> = ({
     // 3) 요소 이동 및 꼭짓점 자유 변형 중
     if (!dragState || !dragState.isDragging) return;
 
+    if (Math.hypot(currX - dragState.startX, currY - dragState.startY) > 3) {
+      dragState.isClickOnly = false;
+    }
+
     const deltaX = currX - dragState.startX;
     const deltaY = currY - dragState.startY;
 
     if (dragState.handle === 'move') {
-      if (dragState.multiInitialPositions && dragState.multiInitialPositions.length > 1) {
+      if (dragState.multiElements && dragState.multiElements.length > 0) {
         // 다중 요소 함께 이동
         const deltaPctX = (deltaX / w) * 100;
         const deltaPctY = (deltaY / h) * 100;
 
         if (onUpdateMultipleElementsDirect) {
-          const updates = dragState.multiInitialPositions.map((pos) => ({
+          const updates = dragState.multiElements.map((pos) => ({
             id: pos.id,
             patch: { x: pos.initialX + deltaPctX, y: pos.initialY + deltaPctY }
           }));
           onUpdateMultipleElementsDirect(updates, false);
         } else {
-          dragState.multiInitialPositions.forEach((pos) => {
+          dragState.multiElements.forEach((pos) => {
             onUpdateElementDirect(
               pos.id,
               { x: pos.initialX + deltaPctX, y: pos.initialY + deltaPctY },
@@ -440,57 +607,135 @@ export const RightCanvasStage: React.FC<Props> = ({
             );
           });
         }
-      } else {
+      } else if (dragState.elementId) {
         // 단일 요소 이동
         const newX = dragState.initialX + (deltaX / w) * 100;
         const newY = dragState.initialY + (deltaY / h) * 100;
         onUpdateElementDirect(dragState.elementId, { x: newX, y: newY }, false);
       }
     } else if (dragState.handle === 'rotate') {
-      // 회전 핸들
-      const target = elements.find((el) => el.id === dragState.elementId);
-      if (!target) return;
-      const cx = w / 2 + (target.x / 100) * w;
-      const cy = h / 2 + (target.y / 100) * h;
-      const angleRad = Math.atan2(currY - cy, currX - cx);
-      const angleDeg = (angleRad * 180) / Math.PI + 90;
-      onUpdateElementDirect(dragState.elementId, { rotation: (angleDeg + 360) % 360 }, false);
-    } else if (dragState.handle && ['nw', 'ne', 'se', 'sw'].includes(dragState.handle)) {
-      // ★ 꼭짓점 자유 변형 (가로·세로 독립 신축 왜곡)
-      // 요소의 회전각도에 따른 로컬 좌표계로 마우스 이동량을 역회전 투영
-      const rad = (dragState.initialRotation * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
+      if (
+        dragState.multiElements &&
+        dragState.multiElements.length > 1 &&
+        dragState.groupBounds &&
+        dragState.groupCenterPct
+      ) {
+        // 다중 요소 그룹 회전
+        const cx = dragState.groupBounds.cx;
+        const cy = dragState.groupBounds.cy;
+        const initRad = Math.atan2(dragState.startY - cy, dragState.startX - cx);
+        const currRad = Math.atan2(currY - cy, currX - cx);
+        const deltaRad = currRad - initRad;
+        const deltaDeg = (deltaRad * 180) / Math.PI;
 
-      const pctDx = (deltaX / w) * 100;
-      const pctDy = (deltaY / h) * 100;
-      const localDx = pctDx * cos + pctDy * sin;
-      const localDy = -pctDx * sin + pctDy * cos;
+        const gCx = dragState.groupCenterPct.x;
+        const gCy = dragState.groupCenterPct.y;
 
-      let newWidth = dragState.initialWidth;
-      let newHeight = dragState.initialHeight;
+        const updates = dragState.multiElements.map((el) => {
+          const relX = el.initialX - gCx;
+          const relY = el.initialY - gCy;
+          const newRelX = relX * Math.cos(deltaRad) - relY * Math.sin(deltaRad);
+          const newRelY = relX * Math.sin(deltaRad) + relY * Math.cos(deltaRad);
+          return {
+            id: el.id,
+            patch: {
+              x: gCx + newRelX,
+              y: gCy + newRelY,
+              rotation: (el.initialRotation + deltaDeg + 360) % 360
+            }
+          };
+        });
 
-      // 사용자가 꼭짓점을 잡아당기는 방향에 맞춰 형태가 길어지고 찌그러지는 직관적 자유 변형
-      switch (dragState.handle) {
-        case 'se': // 우하단
-          newWidth = Math.max(2, dragState.initialWidth + localDx);
-          newHeight = Math.max(2, dragState.initialHeight + localDy);
-          break;
-        case 'ne': // 우상단
-          newWidth = Math.max(2, dragState.initialWidth + localDx);
-          newHeight = Math.max(2, dragState.initialHeight - localDy);
-          break;
-        case 'sw': // 좌하단
-          newWidth = Math.max(2, dragState.initialWidth - localDx);
-          newHeight = Math.max(2, dragState.initialHeight + localDy);
-          break;
-        case 'nw': // 좌상단
-          newWidth = Math.max(2, dragState.initialWidth - localDx);
-          newHeight = Math.max(2, dragState.initialHeight - localDy);
-          break;
+        if (onUpdateMultipleElementsDirect) {
+          onUpdateMultipleElementsDirect(updates, false);
+        }
+      } else if (dragState.elementId) {
+        // 단일 요소 회전
+        const target = elements.find((el) => el.id === dragState.elementId);
+        if (!target) return;
+        const cx = w / 2 + (target.x / 100) * w;
+        const cy = h / 2 + (target.y / 100) * h;
+        const angleRad = Math.atan2(currY - cy, currX - cx);
+        const angleDeg = (angleRad * 180) / Math.PI + 90;
+        onUpdateElementDirect(dragState.elementId, { rotation: (angleDeg + 360) % 360 }, false);
       }
+    } else if (dragState.handle && ['nw', 'ne', 'se', 'sw'].includes(dragState.handle)) {
+      if (
+        dragState.multiElements &&
+        dragState.multiElements.length > 1 &&
+        dragState.groupBounds &&
+        dragState.groupCenterPct
+      ) {
+        // 다중 요소 그룹 크기 변형 (비례/독립 스케일)
+        const gb = dragState.groupBounds;
+        let scaleX = 1;
+        let scaleY = 1;
 
-      onUpdateElementDirect(dragState.elementId, { width: newWidth, height: newHeight }, false);
+        if (dragState.handle === 'se') {
+          scaleX = Math.max(0.1, (gb.w + deltaX) / gb.w);
+          scaleY = Math.max(0.1, (gb.h + deltaY) / gb.h);
+        } else if (dragState.handle === 'sw') {
+          scaleX = Math.max(0.1, (gb.w - deltaX) / gb.w);
+          scaleY = Math.max(0.1, (gb.h + deltaY) / gb.h);
+        } else if (dragState.handle === 'ne') {
+          scaleX = Math.max(0.1, (gb.w + deltaX) / gb.w);
+          scaleY = Math.max(0.1, (gb.h - deltaY) / gb.h);
+        } else if (dragState.handle === 'nw') {
+          scaleX = Math.max(0.1, (gb.w - deltaX) / gb.w);
+          scaleY = Math.max(0.1, (gb.h - deltaY) / gb.h);
+        }
+
+        const gCx = dragState.groupCenterPct.x;
+        const gCy = dragState.groupCenterPct.y;
+
+        const updates = dragState.multiElements.map((el) => ({
+          id: el.id,
+          patch: {
+            x: gCx + (el.initialX - gCx) * scaleX,
+            y: gCy + (el.initialY - gCy) * scaleY,
+            width: Math.max(2, el.initialWidth * scaleX),
+            height: Math.max(2, el.initialHeight * scaleY)
+          }
+        }));
+
+        if (onUpdateMultipleElementsDirect) {
+          onUpdateMultipleElementsDirect(updates, false);
+        }
+      } else if (dragState.elementId) {
+        // 단일 요소 꼭짓점 자유 변형 (가로·세로 독립 신축 왜곡)
+        const rad = (dragState.initialRotation * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const pctDx = (deltaX / w) * 100;
+        const pctDy = (deltaY / h) * 100;
+        const localDx = pctDx * cos + pctDy * sin;
+        const localDy = -pctDx * sin + pctDy * cos;
+
+        let newWidth = dragState.initialWidth;
+        let newHeight = dragState.initialHeight;
+
+        switch (dragState.handle) {
+          case 'se': // 우하단
+            newWidth = Math.max(2, dragState.initialWidth + localDx);
+            newHeight = Math.max(2, dragState.initialHeight + localDy);
+            break;
+          case 'ne': // 우상단
+            newWidth = Math.max(2, dragState.initialWidth + localDx);
+            newHeight = Math.max(2, dragState.initialHeight - localDy);
+            break;
+          case 'sw': // 좌하단
+            newWidth = Math.max(2, dragState.initialWidth - localDx);
+            newHeight = Math.max(2, dragState.initialHeight + localDy);
+            break;
+          case 'nw': // 좌상단
+            newWidth = Math.max(2, dragState.initialWidth - localDx);
+            newHeight = Math.max(2, dragState.initialHeight - localDy);
+            break;
+        }
+
+        onUpdateElementDirect(dragState.elementId, { width: newWidth, height: newHeight }, false);
+      }
     }
   };
 
@@ -550,24 +795,9 @@ export const RightCanvasStage: React.FC<Props> = ({
           } else {
             updateSelection([]);
           }
-        } else if (activeTool === 'multi') {
-          // 다중 선택 도구 상태에서 탭/클릭: 해당 요소를 선택 목록에 토글 추가/제거
-          const hit = findTopHitElement(
-            marqueeState.startX,
-            marqueeState.startY,
-            elements,
-            null,
-            w,
-            h
-          );
-          if (hit.elementId) {
-            const nextIds = currentSelectedIds.includes(hit.elementId)
-              ? currentSelectedIds.filter((id) => id !== hit.elementId)
-              : [...currentSelectedIds, hit.elementId];
-            updateSelection(nextIds);
-          } else {
-            updateSelection([]);
-          }
+        } else {
+          // 빈 영역 단순 클릭 시 선택 해제
+          updateSelection([]);
         }
       }
       setMarqueeState(null);
@@ -576,12 +806,20 @@ export const RightCanvasStage: React.FC<Props> = ({
 
     // 3) 드래그 및 변형 완료 -> 히스토리에 최종 상태 기록
     if (dragState && dragState.isDragging) {
-      if (dragState.multiInitialPositions && dragState.multiInitialPositions.length > 1) {
-        // 다중 요소 이동 종료 히스토리 기록
+      // 다중 선택 도구 상태에서 이미 선택된 요소를 단순 탭(드래그 없이)한 경우 -> 토글 선택 해제
+      if (dragState.isClickOnly && dragState.clickedElementId && activeTool === 'multi') {
+        const nextIds = currentSelectedIds.filter((id) => id !== dragState.clickedElementId);
+        updateSelection(nextIds);
+        setDragState(null);
+        return;
+      }
+
+      if (dragState.multiElements && dragState.multiElements.length > 0) {
+        // 다중 요소 이동 또는 변형 종료 히스토리 기록
         if (onUpdateMultipleElementsDirect) {
           onUpdateMultipleElementsDirect([], true);
         }
-      } else {
+      } else if (dragState.elementId) {
         const target = elements.find((el) => el.id === dragState.elementId);
         if (target) {
           onUpdateElementDirect(

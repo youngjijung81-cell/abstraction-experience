@@ -107,6 +107,46 @@ export function findTopHitElement(
   return { elementId: hits[0].el.id, handle: hits[0].handle };
 }
 
+export function hitTestMultiSelectionBounds(
+  clickX: number,
+  clickY: number,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number; w: number; h: number }
+): { hit: boolean; handle: HandleType } {
+  // 회전 핸들
+  const stemLen = 22;
+  const rotDist = Math.hypot(clickX - bounds.cx, clickY - (bounds.minY - stemLen));
+  if (rotDist <= 12) {
+    return { hit: true, handle: 'rotate' };
+  }
+
+  // 4개 꼭짓점 조절 핸들
+  const handleRadius = 12;
+  const corners: { handle: HandleType; x: number; y: number }[] = [
+    { handle: 'nw', x: bounds.minX, y: bounds.minY },
+    { handle: 'ne', x: bounds.maxX, y: bounds.minY },
+    { handle: 'se', x: bounds.maxX, y: bounds.maxY },
+    { handle: 'sw', x: bounds.minX, y: bounds.maxY }
+  ];
+
+  for (const corner of corners) {
+    if (Math.hypot(clickX - corner.x, clickY - corner.y) <= handleRadius) {
+      return { hit: true, handle: corner.handle };
+    }
+  }
+
+  // 그룹 영역 내부 (이동)
+  if (
+    clickX >= bounds.minX &&
+    clickX <= bounds.maxX &&
+    clickY >= bounds.minY &&
+    clickY <= bounds.maxY
+  ) {
+    return { hit: true, handle: 'move' };
+  }
+
+  return { hit: false, handle: null };
+}
+
 export function findElementsByBox(
   startX: number,
   startY: number,

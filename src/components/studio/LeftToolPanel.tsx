@@ -21,14 +21,21 @@ interface Props {
   canvasBgColor?: string;
   onBgColorChange?: (c: string) => void;
   selectedElement: ArtElement | null;
+  selectedElements?: ArtElement[];
   selectedCount?: number;
   onUpdateElement: (updated: Partial<ArtElement>) => void;
+  onUpdateMultipleProps?: (
+    patch: Partial<ArtElement> | ((el: ArtElement) => Partial<ArtElement>)
+  ) => void;
   onUpdateMultipleColors?: (color: string) => void;
   onDeleteElement: (id: string) => void;
   onDeleteMultiple?: () => void;
   onDuplicateElement: (id: string) => void;
+  onDuplicateMultiple?: () => void;
   onBringForward: (id: string) => void;
+  onBringForwardMultiple?: () => void;
   onSendBackward: (id: string) => void;
+  onSendBackwardMultiple?: () => void;
   onDeselect: () => void;
   onOpenGuide: () => void;
 }
@@ -46,14 +53,19 @@ export const LeftToolPanel: React.FC<Props> = ({
   canvasBgColor = '#FCFCFB',
   onBgColorChange,
   selectedElement,
+  selectedElements = [],
   selectedCount = 0,
   onUpdateElement,
+  onUpdateMultipleProps,
   onUpdateMultipleColors,
   onDeleteElement,
   onDeleteMultiple,
   onDuplicateElement,
+  onDuplicateMultiple,
   onBringForward,
+  onBringForwardMultiple,
   onSendBackward,
+  onSendBackwardMultiple,
   onDeselect,
   onOpenGuide,
 }) => {
@@ -736,14 +748,19 @@ export const LeftToolPanel: React.FC<Props> = ({
           <div className="pt-2">
             <SelectedElementEditor
               element={selectedElement}
+              selectedElements={selectedElements}
               selectedCount={selectedCount}
               onUpdate={onUpdateElement}
+              onUpdateMultipleProps={onUpdateMultipleProps}
               onUpdateMultipleColors={onUpdateMultipleColors}
               onDelete={onDeleteElement}
               onDeleteMultiple={onDeleteMultiple}
               onDuplicate={onDuplicateElement}
+              onDuplicateMultiple={onDuplicateMultiple}
               onBringForward={onBringForward}
+              onBringForwardMultiple={onBringForwardMultiple}
               onSendBackward={onSendBackward}
+              onSendBackwardMultiple={onSendBackwardMultiple}
               onDeselect={onDeselect}
             />
           </div>

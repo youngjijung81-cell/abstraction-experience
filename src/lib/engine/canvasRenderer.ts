@@ -488,6 +488,61 @@ export function drawMarqueeBox(
   ctx.restore();
 }
 
+export interface MultiBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
+}
+
+export function getMultiSelectionBounds(
+  elements: ArtElement[],
+  selectedIds: string[],
+  canvasWidth: number,
+  canvasHeight: number
+): MultiBounds | null {
+  const selected = elements.filter((el) => selectedIds.includes(el.id));
+  if (selected.length <= 1) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const el of selected) {
+    const { px, py, w, h } = toCanvasCoords(el, canvasWidth, canvasHeight);
+    const halfW = Math.max(8, w / 2);
+    const halfH = Math.max(8, h / 2);
+    const maxR = Math.hypot(halfW, halfH);
+
+    minX = Math.min(minX, px - maxR);
+    maxX = Math.max(maxX, px + maxR);
+    minY = Math.min(minY, py - maxR);
+    maxY = Math.max(maxY, py + maxR);
+  }
+
+  const pad = 12;
+  const boundedMinX = minX - pad;
+  const boundedMinY = minY - pad;
+  const boundedMaxX = maxX + pad;
+  const boundedMaxY = maxY + pad;
+
+  return {
+    minX: boundedMinX,
+    minY: boundedMinY,
+    maxX: boundedMaxX,
+    maxY: boundedMaxY,
+    cx: (boundedMinX + boundedMaxX) / 2,
+    cy: (boundedMinY + boundedMaxY) / 2,
+    w: Math.max(24, boundedMaxX - boundedMinX),
+    h: Math.max(24, boundedMaxY - boundedMinY)
+  };
+}
+
 export function drawMultiSelectionOverlay(
   ctx: CanvasRenderingContext2D,
   elements: ArtElement[],
@@ -497,16 +552,19 @@ export function drawMultiSelectionOverlay(
 ) {
   if (selectedIds.length <= 1) return;
 
+  const selected = elements.filter((e) => selectedIds.includes(e.id));
+  if (selected.length === 0) return;
+
   ctx.save();
-  ctx.strokeStyle = '#2563EB';
-  ctx.lineWidth = 1.5;
+
+  // 1. 각 개별 선택 요소 주위에 얇은 점선 하이라이트 박스
+  ctx.strokeStyle = '#4F46E5';
+  ctx.lineWidth = 1.2;
   ctx.setLineDash([4, 4]);
 
-  for (const id of selectedIds) {
-    const el = elements.find((e) => e.id === id);
-    if (!el) continue;
+  for (const el of selected) {
     const { px, py, w, h } = toCanvasCoords(el, canvasWidth, canvasHeight);
-    const pad = 8;
+    const pad = 6;
     const strokeExtra = el.strokeWidth || 0;
     const boxW = Math.max(16, w + pad * 2);
     const boxH = Math.max(16, Math.max(h, strokeExtra) + pad * 2);
@@ -514,10 +572,50 @@ export function drawMultiSelectionOverlay(
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate((el.rotation * Math.PI) / 180);
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+    ctx.fillStyle = 'rgba(79, 70, 229, 0.08)';
     ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
     ctx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
     ctx.restore();
+  }
+
+  // 2. 다중 선택 전체를 감싸는 그룹 변형 바운딩 박스 & 4방향 조절점 & 회전 핸들
+  const bounds = getMultiSelectionBounds(elements, selectedIds, canvasWidth, canvasHeight);
+  if (bounds) {
+    // 테두리 외곽 사각형
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = '#4338CA';
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(bounds.minX, bounds.minY, bounds.w, bounds.h);
+
+    // 4개 모서리 조절 핸들
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = '#4338CA';
+    ctx.lineWidth = 2;
+    const handleSize = 10;
+    const corners = [
+      [bounds.minX, bounds.minY],
+      [bounds.maxX, bounds.minY],
+      [bounds.maxX, bounds.maxY],
+      [bounds.minX, bounds.maxY]
+    ];
+    corners.forEach(([hx, hy]) => {
+      ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+      ctx.strokeRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+    });
+
+    // 회전 핸들 (상단 스템)
+    const stemLen = 22;
+    ctx.beginPath();
+    ctx.moveTo(bounds.cx, bounds.minY);
+    ctx.lineTo(bounds.cx, bounds.minY - stemLen);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(bounds.cx, bounds.minY - stemLen, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#4F46E5';
+    ctx.fill();
+    ctx.stroke();
   }
 
   ctx.restore();
