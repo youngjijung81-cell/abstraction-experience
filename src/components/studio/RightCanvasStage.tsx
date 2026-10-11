@@ -254,23 +254,24 @@ export const RightCanvasStage: React.FC<Props> = ({
     renderCanvas();
   }, [renderCanvas]);
 
+  // 단일 및 다중 선택 일원화 함수 (onSelectElements 호출 시 onSelectElement 중복 호출에 의한 단일 덮어쓰기 방지)
+  const updateSelection = (ids: string[]) => {
+    if (onSelectElements) {
+      onSelectElements(ids);
+    } else {
+      onSelectElement(ids.length > 0 ? ids[0] : null);
+    }
+  };
+
   // 모든 요소 전체 선택
   const handleSelectAll = () => {
     const allIds = elements.map((e) => e.id);
-    if (onSelectElements) {
-      onSelectElements(allIds);
-    }
-    if (allIds.length > 0) {
-      onSelectElement(allIds[0]);
-    }
+    updateSelection(allIds);
   };
 
   // 선택 해제
   const handleClearSelection = () => {
-    if (onSelectElements) {
-      onSelectElements([]);
-    }
-    onSelectElement(null);
+    updateSelection([]);
   };
 
   // 마우스/터치 다운
@@ -326,8 +327,7 @@ export const RightCanvasStage: React.FC<Props> = ({
         const nextIds = currentSelectedIds.includes(hit.elementId)
           ? currentSelectedIds.filter((id) => id !== hit.elementId)
           : [...currentSelectedIds, hit.elementId];
-        if (onSelectElements) onSelectElements(nextIds);
-        onSelectElement(nextIds.length > 0 ? nextIds[nextIds.length - 1] : null);
+        updateSelection(nextIds);
         return;
       }
 
@@ -358,10 +358,7 @@ export const RightCanvasStage: React.FC<Props> = ({
         });
       } else {
         // 단일 선택으로 전환 및 변형 준비
-        onSelectElement(hit.elementId);
-        if (onSelectElements) {
-          onSelectElements([hit.elementId]);
-        }
+        updateSelection([hit.elementId]);
 
         setDragState({
           isDragging: true,
@@ -377,11 +374,8 @@ export const RightCanvasStage: React.FC<Props> = ({
         });
       }
     } else {
-      // 빈 공간 클릭 -> 마키 영역 선택(Marquee Box) 시작
-      onSelectElement(null);
-      if (onSelectElements) {
-        onSelectElements([]);
-      }
+      // 빈 공간 클릭 -> 선택 해제 및 마키 영역 선택(Marquee Box) 시작
+      updateSelection([]);
       setMarqueeState({
         isSelecting: true,
         startX: clickX,
@@ -552,15 +546,9 @@ export const RightCanvasStage: React.FC<Props> = ({
           );
 
           if (matchedIds.length > 0) {
-            if (onSelectElements) {
-              onSelectElements(matchedIds);
-            }
-            onSelectElement(matchedIds[0]);
+            updateSelection(matchedIds);
           } else {
-            onSelectElement(null);
-            if (onSelectElements) {
-              onSelectElements([]);
-            }
+            updateSelection([]);
           }
         } else if (activeTool === 'multi') {
           // 다중 선택 도구 상태에서 탭/클릭: 해당 요소를 선택 목록에 토글 추가/제거
@@ -576,13 +564,9 @@ export const RightCanvasStage: React.FC<Props> = ({
             const nextIds = currentSelectedIds.includes(hit.elementId)
               ? currentSelectedIds.filter((id) => id !== hit.elementId)
               : [...currentSelectedIds, hit.elementId];
-            if (onSelectElements) onSelectElements(nextIds);
-            onSelectElement(nextIds.length > 0 ? nextIds[nextIds.length - 1] : null);
+            updateSelection(nextIds);
           } else {
-            onSelectElement(null);
-            if (onSelectElements) {
-              onSelectElements([]);
-            }
+            updateSelection([]);
           }
         }
       }

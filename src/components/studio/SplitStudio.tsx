@@ -52,20 +52,20 @@ export const SplitStudio: React.FC = () => {
     setHistoryIndex(0);
   }, []);
 
-  // 모드 변경 처리
+  // 모드 변경 처리: 자동 생성된 그림을 유지한 채 자유 창작으로 자연스럽게 이어갈 수 있도록 보존
   const handleModeChange = (newMode: StudioMode) => {
     setMode(newMode);
-    if (newMode === 'freeform') {
-      const empty: ArtElement[] = [];
-      setElements(empty);
-      pushHistory(empty);
-      setSelectedIds([]);
-    } else if (newMode === 'auto') {
-      const generated = generateArtByEmotion(selectedEmotion);
-      setElements(generated);
-      pushHistory(generated);
-      setSelectedIds([]);
+    if (newMode === 'auto') {
+      // 자동 모드로 전환 시 화면이 비어있다면 현재 감정으로 생성
+      if (elements.length === 0) {
+        const generated = generateArtByEmotion(selectedEmotion);
+        setElements(generated);
+        pushHistory(generated);
+        setSelectedIds([]);
+      }
     }
+    // freeform(자유 창작) 전환 시: 화면에 이미 있는 자동 생성 요소를 비우지 않고 그대로 보존하여
+    // 학생이 자동 생성된 그림 위에 점·선·면을 더하거나 자유 드로잉으로 창작을 이어갈 수 있게 함!
   };
 
   // 감정 선택 처리
@@ -81,6 +81,10 @@ export const SplitStudio: React.FC = () => {
 
   // 조형 요소 수동 추가
   const handleAddElement = (type: 'point' | 'line' | 'shape', subType: string) => {
+    // 자동 생성된 그림 위에 새 요소를 추가하면 자연스럽게 자유 창작으로 전환되어 이어짐
+    if (mode === 'auto') {
+      setMode('freeform');
+    }
     // 흩뿌림(spray): 하나의 고정 뭉치가 아니라, 개별적으로 배치·크기·색상을 조절할 수 있는 8개의 독립 점 군집으로 생성
     if (type === 'point' && subType === 'spray') {
       const baseZ = elements.length > 0 ? Math.max(...elements.map((e) => e.zIndex || 0)) + 1 : 1;
@@ -180,6 +184,9 @@ export const SplitStudio: React.FC = () => {
 
   // 자유 드로잉 획 추가
   const handleAddDrawnStroke = (strokeElement: ArtElement) => {
+    if (mode === 'auto') {
+      setMode('freeform');
+    }
     const nextElements = [...elements, strokeElement];
     setElements(nextElements);
     pushHistory(nextElements);

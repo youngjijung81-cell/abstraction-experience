@@ -136,9 +136,9 @@ export const LeftToolPanel: React.FC<Props> = ({
 
         {/* 모드별 안내 메시지 */}
         <div className="mt-2 text-[11px] text-gray-600 bg-blue-50/60 rounded px-2 py-1">
-          {mode === 'auto' && '✨ 감정만 선택하면 인공지능 조형 알고리즘이 자동으로 추상화 화면을 구성합니다.'}
+          {mode === 'auto' && '✨ 감정별 구도를 기초로 삼아, 자유 창작 모드로 전환하거나 캔버스 위에 점·선·면과 드로잉을 자유롭게 더해보세요.'}
           {mode === 'guided' && '🎯 선택한 감정의 조형적 해석과 추천 요소·색채·원리 해설을 보며 단계별로 창작합니다.'}
-          {mode === 'freeform' && '🎨 백지 캔버스에서 점·선·면·자유 드로잉 펜과 조형원리를 완전히 자유롭게 배치합니다.'}
+          {mode === 'freeform' && '🎨 자동 생성된 그림 위나 캔버스에 점·선·면 조형요소, 자유 드로잉 펜, 22색 팔레트를 자유롭게 배치하고 창작합니다.'}
         </div>
       </div>
 
@@ -205,6 +205,30 @@ export const LeftToolPanel: React.FC<Props> = ({
 
       {/* 3. 탭별 메인 컨텐츠 영역 (스크롤 가능) */}
       <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+        {/* 자동 생성 모드에서 바로 자유 창작으로 이어가기 배너 */}
+        {mode === 'auto' && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between shadow-2xs">
+            <div>
+              <div className="text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-blue-600" />
+                <span>현재 그림 바탕으로 자유 창작하기</span>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                자동 생성된 요소를 유지한 채 자유롭게 요소를 더하고 드로잉합니다.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                onModeChange('freeform');
+                setActiveTab('elements');
+              }}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1 whitespace-nowrap ml-2"
+            >
+              <span>자유 창작 시작</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
+        )}
         {/* 감정 가이드 전용 뷰: 감정에 따른 적절한 조형요소와 원리 상세 해설 */}
         {activeTab === 'guidedView' && currEmotionInfo && (
           <div className="space-y-4">

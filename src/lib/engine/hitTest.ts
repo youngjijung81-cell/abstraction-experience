@@ -125,13 +125,14 @@ export function findElementsByBox(
 
   for (const el of elements) {
     const { px, py, w, h } = toCanvasCoords(el, canvasWidth, canvasHeight);
-    const halfW = Math.max(6, w / 2);
-    const halfH = Math.max(6, h / 2);
+    const halfW = Math.max(8, w / 2);
+    const halfH = Math.max(8, h / 2);
+    const maxR = Math.hypot(halfW, halfH);
 
-    const elMinX = px - halfW;
-    const elMaxX = px + halfW;
-    const elMinY = py - halfH;
-    const elMaxY = py + halfH;
+    const elMinX = px - maxR;
+    const elMaxX = px + maxR;
+    const elMinY = py - maxR;
+    const elMaxY = py + maxR;
 
     const overlaps =
       elMinX <= maxX &&
