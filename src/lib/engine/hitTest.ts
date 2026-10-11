@@ -12,8 +12,10 @@ export function hitTestElement(
 ): { hit: boolean; handle: HandleType } {
   const { px, py, w, h } = toCanvasCoords(element, canvasWidth, canvasHeight);
   const pad = 12;
-  const boxW = w + pad * 2;
-  const boxH = h + pad * 2;
+  const effectiveW = Math.max(element.type === 'point' ? 24 : 12, w);
+  const effectiveH = Math.max(element.type === 'point' ? 24 : 12, h);
+  const boxW = effectiveW + pad * 2;
+  const boxH = effectiveH + pad * 2;
 
   // Translate click to element's local space (reverse translation and rotation)
   const rad = (-element.rotation * Math.PI) / 180;

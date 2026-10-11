@@ -238,7 +238,7 @@ export const LeftToolPanel: React.FC<Props> = ({
                     <p className="text-[11px] text-gray-600 mt-0.5">{currEmotionInfo.guide.recommendedElements.point}</p>
                   </div>
                   <button
-                    onClick={() => onAddElement('point', 'cluster')}
+                    onClick={() => onAddElement('point', 'spray')}
                     className="shrink-0 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition"
                   >
                     <Plus size={12} />
@@ -424,7 +424,7 @@ export const LeftToolPanel: React.FC<Props> = ({
                   elementCategory === 'point' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-500'
                 }`}
               >
-                점 (Point) 5종
+                점 (Point) 4종
               </button>
             </div>
 

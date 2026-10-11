@@ -22,21 +22,12 @@ export const POINT_TEMPLATES: ElementTemplate[] = [
   },
   {
     type: 'point',
-    subType: 'cluster',
-    name: '점 군집 (Cluster)',
-    icon: '⁖',
-    description: '밀도 있게 모여 에너지를 형성하는 점들의 덩어리',
-    defaultWidth: 20,
-    defaultHeight: 20
-  },
-  {
-    type: 'point',
     subType: 'spray',
-    name: '흩뿌림 (Spray)',
+    name: '흩뿌림 점군 (Spray)',
     icon: '∴',
-    description: '은하수나 물방울처럼 자유롭게 퍼져나가는 미세한 점들',
-    defaultWidth: 32,
-    defaultHeight: 32
+    description: '은하수나 물방울처럼 자연스럽게 흩뿌려지는 점들 (각 점을 개별 클릭하여 위치·크기·색상 자유 변형)',
+    defaultWidth: 6,
+    defaultHeight: 6
   },
   {
     type: 'point',

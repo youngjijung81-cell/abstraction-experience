@@ -22,7 +22,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'line', subType: 'smooth_curve', x: -10, y: 15, width: 50, height: 25, rotation: -20, color: pickColor(1), opacity: 0.9, strokeWidth: 5, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'wave', x: 15, y: -15, width: 45, height: 18, rotation: 15, color: pickColor(2), opacity: 0.8, strokeWidth: 4, zIndex: 3 },
         { id: uid(), type: 'shape', subType: 'blob', x: -20, y: -20, width: 26, height: 22, rotation: 45, color: pickColor(3), opacity: 0.75, fill: true, zIndex: 4 },
-        { id: uid(), type: 'point', subType: 'cluster', x: 22, y: 20, width: 22, height: 22, rotation: 0, color: pickColor(1), opacity: 0.9, zIndex: 5 },
+        { id: uid(), type: 'point', subType: 'single', x: 22, y: 20, width: 9, height: 9, rotation: 0, color: pickColor(1), opacity: 0.9, zIndex: 5 },
         { id: uid(), type: 'point', subType: 'spray', x: -25, y: 10, width: 28, height: 28, rotation: 0, color: pickColor(0), opacity: 0.7, zIndex: 6 },
         { id: uid(), type: 'shape', subType: 'polygon', sides: 5, distortion: 0.15, x: 5, y: -28, width: 16, height: 16, rotation: 12, color: pickColor(2), opacity: 0.9, fill: true, zIndex: 7 }
       );
@@ -74,7 +74,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'shape', subType: 'ellipse', x: 12, y: -18, width: 30, height: 18, rotation: -30, color: pickColor(0), opacity: 0.85, fill: true, zIndex: 2 },
         { id: uid(), type: 'shape', subType: 'circle', x: -18, y: 20, width: 22, height: 22, rotation: 0, color: pickColor(2), opacity: 0.8, fill: true, zIndex: 3 },
         { id: uid(), type: 'line', subType: 'motion', x: 20, y: -5, width: 32, height: 12, rotation: -45, color: pickColor(3), opacity: 0.75, strokeWidth: 4, zIndex: 4 },
-        { id: uid(), type: 'point', subType: 'cluster', x: 18, y: -25, width: 18, height: 18, rotation: 0, color: pickColor(0), opacity: 0.85, zIndex: 5 }
+        { id: uid(), type: 'point', subType: 'single', x: 18, y: -25, width: 8, height: 8, rotation: 0, color: pickColor(0), opacity: 0.85, zIndex: 5 }
       );
       break;
     }
@@ -119,7 +119,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'shape', subType: 'circle', x: 0, y: 0, width: 40, height: 40, rotation: 0, color: pickColor(0), opacity: 0.8, fill: true, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'blob', x: -15, y: 10, width: 34, height: 28, rotation: -20, color: pickColor(1), opacity: 0.75, fill: true, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'smooth_curve', x: 12, y: -12, width: 38, height: 18, rotation: 25, color: pickColor(2), opacity: 0.85, strokeWidth: 5, zIndex: 3 },
-        { id: uid(), type: 'point', subType: 'cluster', x: -20, y: -18, width: 18, height: 18, rotation: 0, color: pickColor(1), opacity: 0.8, zIndex: 4 }
+        { id: uid(), type: 'point', subType: 'single', x: -20, y: -18, width: 7, height: 7, rotation: 0, color: pickColor(1), opacity: 0.8, zIndex: 4 }
       );
       break;
     }
@@ -199,7 +199,7 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'line', subType: 'zigzag', x: 0, y: 0, width: 55, height: 30, rotation: 60, color: pickColor(2), opacity: 0.9, strokeWidth: 5, zIndex: 3 },
         { id: uid(), type: 'line', subType: 'motion', x: -20, y: 20, width: 38, height: 15, rotation: -40, color: pickColor(3), opacity: 0.8, strokeWidth: 4, zIndex: 4 },
         { id: uid(), type: 'shape', subType: 'polygon', x: 15, y: -22, width: 28, height: 28, rotation: 15, color: pickColor(0), opacity: 0.8, fill: true, zIndex: 5 },
-        { id: uid(), type: 'point', subType: 'cluster', x: -5, y: 22, width: 22, height: 22, rotation: 0, color: pickColor(1), opacity: 0.85, zIndex: 6 }
+        { id: uid(), type: 'point', subType: 'heavy', x: -5, y: 22, width: 14, height: 14, rotation: 0, color: pickColor(1), opacity: 0.85, zIndex: 6 }
       );
       break;
     }

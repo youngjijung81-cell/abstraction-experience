@@ -79,6 +79,51 @@ export const SplitStudio: React.FC = () => {
 
   // 조형 요소 수동 추가
   const handleAddElement = (type: 'point' | 'line' | 'shape', subType: string) => {
+    // 흩뿌림(spray): 하나의 고정 뭉치가 아니라, 개별적으로 배치·크기·색상을 조절할 수 있는 8개의 독립 점 군집으로 생성
+    if (type === 'point' && subType === 'spray') {
+      const baseZ = elements.length > 0 ? Math.max(...elements.map((e) => e.zIndex || 0)) + 1 : 1;
+      const centerOffsetX = (Math.random() - 0.5) * 16;
+      const centerOffsetY = (Math.random() - 0.5) * 16;
+
+      // 8개의 자연스러운 유기적 흩뿌림 점 오프셋 및 크기 변주
+      const sprayOffsets = [
+        { dx: 0, dy: 0, size: 7.5 },
+        { dx: -7.5, dy: -6.5, size: 5 },
+        { dx: 8.5, dy: -5, size: 6 },
+        { dx: 6.5, dy: 8.5, size: 4.5 },
+        { dx: -8.5, dy: 7.5, size: 5.5 },
+        { dx: -13, dy: 1.5, size: 3.5 },
+        { dx: 12, dy: 4, size: 4 },
+        { dx: 2, dy: -12, size: 4 }
+      ];
+
+      const newSprayDots: ArtElement[] = sprayOffsets.map((dot, idx) => {
+        const jitterX = (Math.random() - 0.5) * 2;
+        const jitterY = (Math.random() - 0.5) * 2;
+        return {
+          id: uid(),
+          type: 'point',
+          subType: 'single',
+          x: Math.max(-45, Math.min(45, centerOffsetX + dot.dx + jitterX)),
+          y: Math.max(-45, Math.min(45, centerOffsetY + dot.dy + jitterY)),
+          width: dot.size,
+          height: dot.size,
+          rotation: 0,
+          color: currentColor,
+          opacity: 0.85,
+          fill: true,
+          zIndex: baseZ + idx
+        };
+      });
+
+      const nextElements = [...elements, ...newSprayDots];
+      setElements(nextElements);
+      pushHistory(nextElements);
+      // 첫 번째 점을 기본 선택 상태로 지정하여 즉시 조작 가능하게 함
+      setSelectedId(newSprayDots[0].id);
+      return;
+    }
+
     let defaultW = 20;
     let defaultH = 20;
 
