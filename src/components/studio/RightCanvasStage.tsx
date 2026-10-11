@@ -22,7 +22,8 @@ import {
   MousePointer,
   PenTool,
   Sparkles,
-  Layers
+  Layers,
+  Copy
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -34,6 +35,7 @@ interface Props {
   elements: ArtElement[];
   selectedId: string | null;
   selectedIds?: string[];
+  canvasBgColor?: string;
   onSelectElement: (id: string | null) => void;
   onSelectElements?: (ids: string[]) => void;
   onUpdateElementDirect: (id: string, updated: Partial<ArtElement>, pushHistory?: boolean) => void;
@@ -43,6 +45,7 @@ interface Props {
   ) => void;
   onAddDrawnStroke: (element: ArtElement) => void;
   onDeleteSelected: () => void;
+  onDuplicateSelected?: () => void;
   onClearAll: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -60,12 +63,14 @@ export const RightCanvasStage: React.FC<Props> = ({
   elements,
   selectedId,
   selectedIds = [],
+  canvasBgColor = '#FCFCFB',
   onSelectElement,
   onSelectElements,
   onUpdateElementDirect,
   onUpdateMultipleElementsDirect,
   onAddDrawnStroke,
   onDeleteSelected,
+  onDuplicateSelected,
   onClearAll,
   onUndo,
   onRedo,
@@ -127,8 +132,8 @@ export const RightCanvasStage: React.FC<Props> = ({
     const width = canvas.width;
     const height = canvas.height;
 
-    // 1. 캔버스 배경 (고급 종이 질감)
-    drawBackground(ctx, width, height, '#FCFCFB');
+    // 1. 캔버스 배경 (고급 종이 질감 및 사용자 선택 배경색)
+    drawBackground(ctx, width, height, canvasBgColor || '#FCFCFB');
 
     // 2. 조형 요소 정렬 렌더링 (zIndex 기준)
     const sorted = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
@@ -209,7 +214,8 @@ export const RightCanvasStage: React.FC<Props> = ({
     currentColor,
     brushWidth,
     brushStyle,
-    marqueeState
+    marqueeState,
+    canvasBgColor
   ]);
 
   // 반응형 캔버스 크기 리사이즈 핸들러
@@ -623,6 +629,18 @@ export const RightCanvasStage: React.FC<Props> = ({
           >
             <Redo2 size={15} />
           </button>
+
+          {/* 선택 요소 복제 */}
+          {activeTool === 'select' && currentSelectedIds.length > 0 && onDuplicateSelected && (
+            <button
+              onClick={onDuplicateSelected}
+              title="선택된 요소 복제"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 text-xs font-bold text-blue-600 transition"
+            >
+              <Copy size={13} />
+              <span>{currentSelectedIds.length > 1 ? `${currentSelectedIds.length}개 복제` : '복제'}</span>
+            </button>
+          )}
 
           {/* 선택 삭제 */}
           {activeTool === 'select' && currentSelectedIds.length > 0 && (

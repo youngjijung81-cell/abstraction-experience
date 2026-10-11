@@ -15,6 +15,7 @@ interface Props {
   selectedEmotion: EmotionKey;
   activePrinciples: PrincipleKey[];
   mode: StudioMode;
+  canvasBgColor?: string;
 }
 
 export const GalleryModal: React.FC<Props> = ({
@@ -24,6 +25,7 @@ export const GalleryModal: React.FC<Props> = ({
   selectedEmotion,
   activePrinciples,
   mode,
+  canvasBgColor = '#FCFCFB',
 }) => {
   const [title, setTitle] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -61,7 +63,7 @@ export const GalleryModal: React.FC<Props> = ({
         modeName: mode
       };
 
-      const imageData = exportArtworkToDataUrl(elements, metadata, 720);
+      const imageData = exportArtworkToDataUrl(elements, metadata, 720, canvasBgColor);
 
       const res = await fetch('/api/artworks', {
         method: 'POST',

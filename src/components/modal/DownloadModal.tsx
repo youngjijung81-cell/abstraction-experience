@@ -13,6 +13,7 @@ interface Props {
   selectedEmotion: EmotionKey;
   activePrinciples: PrincipleKey[];
   mode: StudioMode;
+  canvasBgColor?: string;
 }
 
 export const DownloadModal: React.FC<Props> = ({
@@ -22,6 +23,7 @@ export const DownloadModal: React.FC<Props> = ({
   selectedEmotion,
   activePrinciples,
   mode,
+  canvasBgColor = '#FCFCFB',
 }) => {
   const [title, setTitle] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -54,16 +56,16 @@ export const DownloadModal: React.FC<Props> = ({
   useEffect(() => {
     if (isOpen && elements.length > 0) {
       const meta = getMetadata();
-      const url = exportArtworkToDataUrl(elements, meta, 720);
+      const url = exportArtworkToDataUrl(elements, meta, 720, canvasBgColor);
       setPreviewUrl(url);
     }
-  }, [isOpen, elements, title, studentId, studentName, selectedEmotion, activePrinciples]);
+  }, [isOpen, elements, title, studentId, studentName, selectedEmotion, activePrinciples, canvasBgColor]);
 
   if (!isOpen) return null;
 
   const handleDownload = () => {
     const meta = getMetadata();
-    downloadArtworkPNG(elements, meta);
+    downloadArtworkPNG(elements, meta, canvasBgColor);
     setDownloaded(true);
     setTimeout(() => setDownloaded(false), 2500);
   };

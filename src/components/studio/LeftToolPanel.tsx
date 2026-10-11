@@ -18,6 +18,8 @@ interface Props {
   activePrinciples: PrincipleKey[];
   currentColor: string;
   onColorChange: (c: string) => void;
+  canvasBgColor?: string;
+  onBgColorChange?: (c: string) => void;
   selectedElement: ArtElement | null;
   selectedCount?: number;
   onUpdateElement: (updated: Partial<ArtElement>) => void;
@@ -41,6 +43,8 @@ export const LeftToolPanel: React.FC<Props> = ({
   activePrinciples,
   currentColor,
   onColorChange,
+  canvasBgColor = '#FCFCFB',
+  onBgColorChange,
   selectedElement,
   selectedCount = 0,
   onUpdateElement,
@@ -55,6 +59,7 @@ export const LeftToolPanel: React.FC<Props> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'emotions' | 'elements' | 'colors' | 'principles' | 'guidedView'>('emotions');
   const [elementCategory, setElementCategory] = useState<'shape' | 'line' | 'point'>('shape');
+  const [colorTarget, setColorTarget] = useState<'element' | 'background'>('element');
 
   const currEmotionInfo = EMOTIONS.find((e) => e.key === selectedEmotion) || EMOTIONS[0];
 
@@ -499,24 +504,84 @@ export const LeftToolPanel: React.FC<Props> = ({
           </div>
         )}
 
-        {/* 탭 3: 색채 팔레트 (22색 미술 표준 + 커스텀) */}
+        {/* 탭 3: 색채 팔레트 (요소 색상 & 캔버스 배경색) */}
         {activeTab === 'colors' && (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
+            {/* 색상 적용 대상 전환 (요소 색상 vs 캔버스 배경색) */}
+            <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
+              <button
+                onClick={() => setColorTarget('element')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  colorTarget === 'element'
+                    ? 'bg-white text-blue-600 shadow-2xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: currentColor }} />
+                <span>요소 색상 {selectedCount > 0 ? `(${selectedCount}개 선택됨)` : ''}</span>
+              </button>
+              <button
+                onClick={() => setColorTarget('background')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  colorTarget === 'background'
+                    ? 'bg-white text-indigo-600 shadow-2xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-gray-300"
+                  style={{ backgroundColor: canvasBgColor }}
+                />
+                <span>캔버스 배경색</span>
+              </button>
+            </div>
+
+            {/* 안내 배너 */}
+            <div className={`p-2.5 rounded-xl border text-[11px] leading-relaxed ${
+              colorTarget === 'element'
+                ? selectedCount > 0
+                  ? 'bg-blue-50/80 border-blue-200 text-blue-800 font-semibold'
+                  : 'bg-gray-50 border-gray-200 text-gray-600'
+                : 'bg-indigo-50/80 border-indigo-200 text-indigo-800 font-semibold'
+            }`}>
+              {colorTarget === 'element'
+                ? selectedCount > 0
+                  ? `💡 22색 팔레트를 누르면 현재 선택된 ${selectedCount}개 요소의 색상이 실시간으로 변경됩니다.`
+                  : '💡 22색 팔레트를 누르면 새로 추가할 요소의 기본 색상이 설정됩니다.'
+                : '💡 22색 팔레트나 추천 프리셋을 누르면 캔버스 배경색이 실시간으로 변경됩니다.'}
+            </div>
+
+            {/* 22색 표준 미술 팔레트 */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-gray-700">미술 교육용 표준 22색 팔레트</span>
-                <span className="text-[11px] text-gray-400">현재 색: {currentColor}</span>
+                <span className="text-xs font-bold text-gray-700">
+                  {colorTarget === 'element' ? '미술 교육용 표준 22색 팔레트' : '22색 표준 팔레트 적용'}
+                </span>
+                <span className="text-[11px] text-gray-400 font-mono">
+                  {colorTarget === 'element' ? currentColor : canvasBgColor}
+                </span>
               </div>
               <div className="grid grid-cols-4 gap-2">
                 {ART_COLORS.map((c) => {
-                  const isSelected = currentColor.toLowerCase() === c.hex.toLowerCase();
+                  const targetHex = colorTarget === 'element' ? currentColor : canvasBgColor;
+                  const isSelected = targetHex.toLowerCase() === c.hex.toLowerCase();
                   return (
                     <button
                       key={c.hex}
-                      onClick={() => onColorChange(c.hex)}
+                      onClick={() => {
+                        if (colorTarget === 'background') {
+                          if (onBgColorChange) onBgColorChange(c.hex);
+                        } else {
+                          onColorChange(c.hex);
+                          if (selectedElement) onUpdateElement({ color: c.hex });
+                          if (selectedCount > 1 && onUpdateMultipleColors) onUpdateMultipleColors(c.hex);
+                        }
+                      }}
                       className={`p-2 rounded-xl border flex flex-col items-center gap-1.5 transition ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-400'
+                          ? colorTarget === 'element'
+                            ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-400'
+                            : 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-400'
                           : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
@@ -533,22 +598,70 @@ export const LeftToolPanel: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* 캔버스 배경색 전용 추천 프리셋 (배경색 모드일 때 추가 표시) */}
+            {colorTarget === 'background' && (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-xs font-bold text-gray-700 block">캔버스 질감 추천 배경색</span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { name: '한지 미색', hex: '#FCFCFB' },
+                    { name: '웜 아이보리', hex: '#FFFDF5' },
+                    { name: '쿨 화이트', hex: '#F8FAFC' },
+                    { name: '모던 그레이', hex: '#EDF2F7' },
+                    { name: '차콜 그레이', hex: '#2D3748' },
+                    { name: '미드나잇 블랙', hex: '#1A202C' },
+                    { name: '딥 네이비', hex: '#1E3A8A' },
+                    { name: '버건디 와인', hex: '#4C1D1D' }
+                  ].map((bg) => (
+                    <button
+                      key={bg.hex}
+                      onClick={() => onBgColorChange && onBgColorChange(bg.hex)}
+                      className={`p-1.5 rounded-lg border text-center transition flex flex-col items-center gap-1 ${
+                        canvasBgColor.toLowerCase() === bg.hex.toLowerCase()
+                          ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-400'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <span
+                        style={{ backgroundColor: bg.hex }}
+                        className="w-5 h-5 rounded-full border border-black/15 shadow-2xs"
+                      />
+                      <span className="text-[9px] font-semibold text-gray-700 truncate w-full">
+                        {bg.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 자유 조색 피커 */}
             <div className="bg-white border rounded-xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  value={currentColor}
-                  onChange={(e) => onColorChange(e.target.value)}
+                  value={colorTarget === 'element' ? currentColor : canvasBgColor}
+                  onChange={(e) => {
+                    const hex = e.target.value;
+                    if (colorTarget === 'background') {
+                      if (onBgColorChange) onBgColorChange(hex);
+                    } else {
+                      onColorChange(hex);
+                      if (selectedElement) onUpdateElement({ color: hex });
+                      if (selectedCount > 1 && onUpdateMultipleColors) onUpdateMultipleColors(hex);
+                    }
+                  }}
                   className="w-9 h-9 rounded-lg border border-gray-300 cursor-pointer p-0"
                 />
                 <div>
-                  <span className="text-xs font-bold text-gray-800 block">자유 조색 (Custom Picker)</span>
+                  <span className="text-xs font-bold text-gray-800 block">
+                    {colorTarget === 'element' ? '요소 자유 조색' : '배경색 자유 조색'}
+                  </span>
                   <span className="text-[11px] text-gray-500">원하는 색상을 직접 배색해보세요</span>
                 </div>
               </div>
               <span className="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                {currentColor}
+                {colorTarget === 'element' ? currentColor : canvasBgColor}
               </span>
             </div>
           </div>

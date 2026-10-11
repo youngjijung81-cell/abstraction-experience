@@ -99,16 +99,51 @@ export const ConceptGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* 4. 창작 팁 */}
+          {/* 4. 최신 스튜디오 조작 팁 */}
+          <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100 space-y-2.5">
+            <h4 className="font-bold text-indigo-950 mb-1 flex items-center gap-1.5 text-xs">
+              <Sparkles size={15} className="text-indigo-600" />
+              <span>🎨 스튜디오 핵심 조작 가이드</span>
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-700">
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">🖱️ 마우스 드래그 다중 선택</span>
+                <span>캔버스 빈 공간을 크게 드래그하면 영역 안의 여러 요소를 한 번에 선택하여 일괄 이동·색상 변경할 수 있습니다.</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">📐 자유 변형 & 가로·세로 신축</span>
+                <span>요소를 선택한 후 사각형 테두리의 꼭짓점과 변 조절점을 드래그하여 형태를 자유롭게 늘이거나 줄여보세요.</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">📋 요소 복제 (원터치 복제)</span>
+                <span>상단 툴바의 복제(📋) 버튼을 누르면 선택된 요소들이 겹치지 않게 즉시 복제되어 연속적인 리듬과 패턴을 만듭니다.</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">🖼️ 캔버스 배경색 & 22색 팔레트</span>
+                <span>[색채] 탭에서 [캔버스 배경색]을 골라 한지·린넨 질감이나 22색 표준 배색을 배경으로 깔아 분위기를 바꿀 수 있습니다.</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">✨ 흩뿌림 점의 개별 제어</span>
+                <span>[점] 탭의 [흩뿌림] 도구를 누르면 개별 점들이 생성되어, 원하는 점만 골라 크기와 색상을 따로 바꿀 수 있습니다.</span>
+              </div>
+              <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
+                <span className="font-bold text-indigo-900 block">✏️ 자유 드로잉 & 브러시</span>
+                <span>상단 자유 드로잉 펜을 켜면 펜, 형광 마커, 동양화 먹물 브러시로 감정의 흐름을 자유롭게 그릴 수 있습니다.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. 학생 실습 단계 안내 */}
           <div className="bg-slate-50 p-4 rounded-xl border border-gray-200">
             <h4 className="font-bold text-gray-900 mb-1 flex items-center gap-1">
               <CheckCircle size={15} className="text-green-600" />
               <span>학생 실습 꿀팁</span>
             </h4>
             <ul className="list-disc list-inside space-y-1 text-gray-600 text-[11px]">
-              <li>[자동 생성]으로 감정에 어울리는 기초 구도를 잡은 후, 캔버스의 요소를 직접 클릭해 위치와 색상을 수정해 보세요.</li>
-              <li>화면이 밋밋하다면 [조형 원리]에서 <strong>&apos;리듬&apos;</strong>이나 <strong>&apos;강조&apos;</strong>를 눌러 역동성을 부여해 보세요.</li>
-              <li>완성된 작품은 고해상도 PNG로 다운로드하고, [우리 반 전시관]에 작가의 의도를 함께 남겨 공유하세요!</li>
+              <li><strong>1단계 [감정 탐색]</strong>: 16가지 감정 중 자신의 오늘 기분이나 표현하고 싶은 정서를 선택해 기본 영감을 얻습니다.</li>
+              <li><strong>2단계 [조형 원리 적용]</strong>: 8대 조형 원리(&apos;율동&apos;, &apos;대비&apos;, &apos;강조&apos; 등)를 클릭해 화면에 질서와 에너지를 부여합니다.</li>
+              <li><strong>3단계 [창의적 변형]</strong>: 요소를 클릭하여 22색 표준 팔레트로 색을 바꾸고 꼭짓점을 당겨 나만의 비구상 형태를 완성합니다.</li>
+              <li><strong>4단계 [감상 및 공유]</strong>: 고해상도 PNG로 다운로드하고, [우리 반 갤러리]에 작가 의도와 함께 올려 친구들의 작품을 감상합니다.</li>
             </ul>
           </div>
         </div>

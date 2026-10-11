@@ -14,7 +14,8 @@ export interface ExportMetadata {
 export function exportArtworkToDataUrl(
   elements: ArtElement[],
   metadata: ExportMetadata,
-  outputSize: number = 1080
+  outputSize: number = 1080,
+  bgColor: string = '#FCFCFB'
 ): string {
   const canvas = document.createElement('canvas');
   canvas.width = outputSize;
@@ -22,8 +23,8 @@ export function exportArtworkToDataUrl(
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // 1. 미술관 규격 미색 캔버스 배경
-  drawBackground(ctx, outputSize, outputSize, '#FBFBFA');
+  // 1. 사용자 지정 캔버스 배경색 적용
+  drawBackground(ctx, outputSize, outputSize, bgColor);
 
   // 2. 작품 영역 렌더링 (상단 86% 영역에 배치)
   const artAreaH = outputSize * 0.86;
@@ -84,8 +85,8 @@ export function exportArtworkToDataUrl(
   return canvas.toDataURL('image/png');
 }
 
-export function downloadArtworkPNG(elements: ArtElement[], metadata: ExportMetadata) {
-  const dataUrl = exportArtworkToDataUrl(elements, metadata);
+export function downloadArtworkPNG(elements: ArtElement[], metadata: ExportMetadata, bgColor?: string) {
+  const dataUrl = exportArtworkToDataUrl(elements, metadata, 1080, bgColor);
   if (!dataUrl) return;
 
   const a = document.createElement('a');

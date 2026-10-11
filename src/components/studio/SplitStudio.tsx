@@ -21,6 +21,7 @@ export const SplitStudio: React.FC = () => {
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionKey>('joy');
   const [activePrinciples, setActivePrinciples] = useState<PrincipleKey[]>([]);
   const [currentColor, setCurrentColor] = useState<string>('#E53E3E');
+  const [canvasBgColor, setCanvasBgColor] = useState<string>('#FCFCFB');
 
   // 조형 요소 및 히스토리 상태 (Undo / Redo)
   const [elements, setElements] = useState<ArtElement[]>([]);
@@ -295,6 +296,25 @@ export const SplitStudio: React.FC = () => {
     setSelectedIds([duplicated.id]);
   };
 
+  // 선택된 요소(단일 또는 다중) 복제
+  const handleDuplicateSelected = () => {
+    if (selectedIds.length === 0) return;
+    const targets = elements.filter((el) => selectedIds.includes(el.id));
+    if (targets.length === 0) return;
+    const baseZ = Math.max(...elements.map((e) => e.zIndex || 0)) + 1;
+    const newClones: ArtElement[] = targets.map((t, idx) => ({
+      ...t,
+      id: uid(),
+      x: Math.min(45, t.x + 4),
+      y: Math.min(45, t.y + 4),
+      zIndex: baseZ + idx
+    }));
+    const nextElements = [...elements, ...newClones];
+    setElements(nextElements);
+    pushHistory(nextElements);
+    setSelectedIds(newClones.map((c) => c.id));
+  };
+
   // 레이어 순서 앞/뒤
   const handleBringForward = (id: string) => {
     const nextElements = elements.map((el) => {
@@ -364,6 +384,8 @@ export const SplitStudio: React.FC = () => {
           activePrinciples={activePrinciples}
           currentColor={currentColor}
           onColorChange={setCurrentColor}
+          canvasBgColor={canvasBgColor}
+          onBgColorChange={setCanvasBgColor}
           selectedElement={selectedElement}
           selectedCount={selectedIds.length}
           onUpdateElement={handleUpdateElement}
@@ -384,12 +406,14 @@ export const SplitStudio: React.FC = () => {
           elements={elements}
           selectedId={selectedId}
           selectedIds={selectedIds}
+          canvasBgColor={canvasBgColor}
           onSelectElement={(id) => setSelectedIds(id ? [id] : [])}
           onSelectElements={(ids) => setSelectedIds(ids)}
           onUpdateElementDirect={handleUpdateElementDirect}
           onUpdateMultipleElementsDirect={handleUpdateMultipleElementsDirect}
           onAddDrawnStroke={handleAddDrawnStroke}
           onDeleteSelected={handleDeleteSelected}
+          onDuplicateSelected={handleDuplicateSelected}
           onClearAll={handleClearAll}
           onUndo={handleUndo}
           onRedo={handleRedo}
@@ -412,6 +436,7 @@ export const SplitStudio: React.FC = () => {
         selectedEmotion={selectedEmotion}
         activePrinciples={activePrinciples}
         mode={mode}
+        canvasBgColor={canvasBgColor}
       />
 
       {/* 갤러리 공유 모달 */}
@@ -422,6 +447,7 @@ export const SplitStudio: React.FC = () => {
         selectedEmotion={selectedEmotion}
         activePrinciples={activePrinciples}
         mode={mode}
+        canvasBgColor={canvasBgColor}
       />
 
       {/* 조형 학습 가이드 모달 */}
