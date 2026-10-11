@@ -67,7 +67,11 @@ export default function GalleryPage() {
   const [passwordError, setPasswordError] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 초기 데이터 로드 및 교사 세션 복원
+  // 교사 모드 단축 접근을 위한 비밀 클릭 횟수
+  const [secretClickCount, setSecretClickCount] = useState<number>(0);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
+  // 초기 데이터 로드 및 교사 세션 복원 & 단축키/URL 파라미터 감지
   useEffect(() => {
     async function load() {
       try {
@@ -90,6 +94,24 @@ export default function GalleryPage() {
       setIsAdmin(true);
       setAdminPassword(savedPin);
     }
+
+    // URL 파라미터 감지 (?admin=true 또는 ?teacher=true)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === 'true' || params.get('teacher') === 'true') {
+        setShowAdminModal(true);
+      }
+    }
+
+    // 단축키 감지: Ctrl + Shift + A (Teacher Admin Shortcut)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setShowAdminModal(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // 반 목록 및 각 반별 등록 작품 수 집계
@@ -135,25 +157,53 @@ export default function GalleryPage() {
     });
   }, [artworks, selectedEmotion, selectedClass, searchQuery]);
 
-  // 교사 모드 로그인 처리
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // 헤더 🏛️ 아이콘 3회 연속 클릭 시 교사 모드 진입
+  const handleSecretIconClick = () => {
+    setSecretClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        setShowAdminModal(true);
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  // 교사 모드 서버 검증 로그인 처리
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordInput.trim()) {
       setPasswordError('비밀번호를 입력해 주세요.');
       return;
     }
 
-    // 기본 비밀번호 '1234'
-    const validPassword = passwordInput.trim();
-    if (validPassword === '1234') {
+    setIsVerifying(true);
+    setPasswordError('');
+
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput.trim() })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPasswordError(data.error || '비밀번호가 올바르지 않습니다.');
+        setIsVerifying(false);
+        return;
+      }
+
       setIsAdmin(true);
-      setAdminPassword(validPassword);
-      sessionStorage.setItem('art_admin_pin', validPassword);
+      setAdminPassword(passwordInput.trim());
+      sessionStorage.setItem('art_admin_pin', passwordInput.trim());
       setShowAdminModal(false);
       setPasswordInput('');
       setPasswordError('');
-    } else {
-      setPasswordError('비밀번호가 올바르지 않습니다. (기본 PIN: 1234)');
+    } catch {
+      setPasswordError('비밀번호 검증 중 오류가 발생했습니다.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -209,8 +259,14 @@ export default function GalleryPage() {
               <span>창작 스튜디오</span>
             </Link>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
-                <span>🏛️</span>
+              <h1 className="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2 select-none">
+                <span
+                  onClick={handleSecretIconClick}
+                  className="cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+                  title="온라인 미술관"
+                >
+                  🏛️
+                </span>
                 <span>우리 반 온라인 미술관</span>
               </h1>
               <p className="text-[11px] text-gray-500 hidden sm:block">
@@ -220,9 +276,9 @@ export default function GalleryPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 교사 관리 모드 버튼 */}
+            {/* 교사 관리 모드: 활성화 시 관리 상태 배지 표시, 비활성 시에는 아주 작고 은은한 잠금 아이콘으로만 최소화 */}
             {isAdmin ? (
-              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-xl shadow-2xs">
                 <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
                   <Unlock size={14} className="text-emerald-600" />
                   <span className="hidden sm:inline">교사 관리 모드</span>
@@ -230,7 +286,7 @@ export default function GalleryPage() {
                 </span>
                 <button
                   onClick={handleAdminLogout}
-                  className="text-[11px] font-semibold text-gray-500 hover:text-red-600 underline ml-1"
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 underline ml-1"
                 >
                   종료
                 </button>
@@ -241,12 +297,11 @@ export default function GalleryPage() {
                   setShowAdminModal(true);
                   setPasswordError('');
                 }}
-                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                title="선생님 전용 작품 삭제 및 관리 기능"
+                className="p-1.5 text-gray-300 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
+                title="관리자"
+                aria-label="관리자"
               >
                 <Lock size={13} />
-                <span className="hidden sm:inline">교사 관리 모드</span>
-                <span className="sm:hidden">교사모드</span>
               </button>
             )}
 
@@ -618,7 +673,7 @@ export default function GalleryPage() {
                 </label>
                 <input
                   type="password"
-                  placeholder="비밀번호 입력 (기본: 1234)"
+                  placeholder="관리자 비밀번호를 입력해 주세요"
                   value={passwordInput}
                   onChange={(e) => {
                     setPasswordInput(e.target.value);
@@ -628,7 +683,7 @@ export default function GalleryPage() {
                   className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                 />
                 <p className="text-[10px] text-gray-400 mt-1">
-                  * 초기 설정 비밀번호는 <span className="font-bold text-indigo-600">1234</span> 입니다.
+                  * 승인된 지도교사만 작품 삭제 및 관리 권한을 가집니다.
                 </p>
                 {passwordError && (
                   <p className="text-xs text-red-600 font-bold mt-1 flex items-center gap-1">
@@ -648,9 +703,10 @@ export default function GalleryPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition"
+                  disabled={isVerifying}
+                  className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 rounded-xl shadow-xs transition"
                 >
-                  관리 모드 시작
+                  {isVerifying ? '확인 중...' : '관리 모드 시작'}
                 </button>
               </div>
             </form>
