@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ArtworkRecord } from '@/lib/types';
 import { EMOTIONS } from '@/lib/constants/emotions';
 import Link from 'next/link';
@@ -17,7 +17,8 @@ import {
   X,
   Layers,
   School,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 // 학번에서 반(Class) 정보 추출 유틸 함수
@@ -52,6 +53,8 @@ function getStudentClass(studentId?: string): string {
 export default function GalleryPage() {
   const [artworks, setArtworks] = useState<ArtworkRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
   // 필터 및 검색 상태
   const [selectedEmotion, setSelectedEmotion] = useState<string>('all');
@@ -71,22 +74,32 @@ export default function GalleryPage() {
   const [secretClickCount, setSecretClickCount] = useState<number>(0);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
-  // 초기 데이터 로드 및 교사 세션 복원 & 단축키/URL 파라미터 감지
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch('/api/artworks');
-        const data = await res.json();
-        if (data.artworks) {
-          setArtworks(data.artworks);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+  // 실시간 작품 목록 불러오기 함수
+  const loadArtworks = useCallback(async (silent = false) => {
+    if (!silent) setIsRefreshing(true);
+    try {
+      const res = await fetch('/api/artworks');
+      const data = await res.json();
+      if (data.artworks) {
+        setArtworks(data.artworks);
+        setLastSyncTime(new Date());
       }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (!silent) setIsRefreshing(false);
+      setLoading(false);
     }
-    load();
+  }, []);
+
+  // 초기 로드 & 10초 주기 실시간 자동 동기화 (수업 중 학생들 제출 실시간 반영)
+  useEffect(() => {
+    loadArtworks(false);
+
+    // 10초마다 자동으로 새로운 제출 작품 실시간 반영
+    const syncInterval = setInterval(() => {
+      loadArtworks(true);
+    }, 10000);
 
     // 저장된 관리자 세션 확인
     const savedPin = sessionStorage.getItem('art_admin_pin');
@@ -111,8 +124,12 @@ export default function GalleryPage() {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+
+    return () => {
+      clearInterval(syncInterval);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loadArtworks]);
 
   // 반 목록 및 각 반별 등록 작품 수 집계
   const classCounts = useMemo(() => {
@@ -269,13 +286,33 @@ export default function GalleryPage() {
                 </span>
                 <span>우리 반 온라인 미술관</span>
               </h1>
-              <p className="text-[11px] text-gray-500 hidden sm:block">
-                감정을 조형 요소와 원리로 시각화한 학생들의 추상화 전시관
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] text-gray-500 hidden sm:block">
+                  감정을 조형 요소와 원리로 시각화한 학생들의 추상화 전시관
+                </p>
+                <div className="flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>실시간 동기화 중 ({artworks.length}점)</span>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* 실시간 수동 새로고침 버튼 */}
+            <button
+              onClick={() => loadArtworks(false)}
+              disabled={isRefreshing}
+              title="새로 제출된 학생 작품 실시간 불러오기"
+              className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+            >
+              <RefreshCw
+                size={13}
+                className={isRefreshing ? 'animate-spin text-blue-600' : 'text-gray-500'}
+              />
+              <span className="hidden sm:inline">{isRefreshing ? '불러오는 중...' : '새로고침'}</span>
+            </button>
+
             {/* 교사 관리 모드: 활성화 시 관리 상태 배지 표시, 비활성 시에는 아주 작고 은은한 잠금 아이콘으로만 최소화 */}
             {isAdmin ? (
               <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-xl shadow-2xs">
