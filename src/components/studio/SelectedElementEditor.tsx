@@ -7,8 +7,11 @@ import { Trash2, Copy, ArrowUp, ArrowDown, Sliders, Activity, Hexagon } from 'lu
 
 interface Props {
   element: ArtElement | null;
+  selectedCount?: number;
   onUpdate: (updated: Partial<ArtElement>) => void;
+  onUpdateMultipleColors?: (color: string) => void;
   onDelete: (id: string) => void;
+  onDeleteMultiple?: () => void;
   onDuplicate: (id: string) => void;
   onBringForward: (id: string) => void;
   onSendBackward: (id: string) => void;
@@ -17,13 +20,72 @@ interface Props {
 
 export const SelectedElementEditor: React.FC<Props> = ({
   element,
+  selectedCount = 1,
   onUpdate,
+  onUpdateMultipleColors,
   onDelete,
+  onDeleteMultiple,
   onDuplicate,
   onBringForward,
   onSendBackward,
   onDeselect,
 }) => {
+  // 다중 선택 상태일 때 전용 일괄 제어 UI
+  if (selectedCount > 1) {
+    return (
+      <div className="bg-white border-2 border-indigo-400 rounded-xl p-3.5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between border-b pb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+            <span className="text-xs font-extrabold text-indigo-900">
+              다중 선택됨 ({selectedCount}개 조형 요소)
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onDeleteMultiple}
+              title="선택된 모든 요소 일괄 삭제"
+              className="p-1 hover:bg-red-50 rounded text-red-600 hover:text-red-700 text-xs font-bold flex items-center gap-1"
+            >
+              <Trash2 size={13} />
+              <span>일괄삭제</span>
+            </button>
+            <button
+              onClick={onDeselect}
+              className="text-[11px] text-gray-400 hover:text-gray-700 ml-1 underline"
+            >
+              선택해제
+            </button>
+          </div>
+        </div>
+
+        {/* 일괄 색상 변경 팔레트 */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-600 block mb-1">
+            선택된 모든 요소 색상 일괄 변경
+          </label>
+          <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto p-1 bg-gray-50 rounded-lg border border-gray-200">
+            {ART_COLORS.map((c) => (
+              <button
+                key={c.hex}
+                onClick={() => {
+                  if (onUpdateMultipleColors) onUpdateMultipleColors(c.hex);
+                }}
+                title={c.name}
+                style={{ backgroundColor: c.hex }}
+                className="w-5 h-5 rounded-full border border-gray-300 transition-transform hover:scale-110"
+              />
+            ))}
+          </div>
+        </div>
+
+        <p className="text-[11px] text-indigo-600 bg-indigo-50 p-2 rounded-lg leading-relaxed">
+          💡 캔버스에서 드래그하여 선택된 {selectedCount}개의 요소들을 한꺼번에 이동할 수 있습니다.
+        </p>
+      </div>
+    );
+  }
+
   if (!element) return null;
 
   const typeLabels: Record<string, string> = {
@@ -37,7 +99,7 @@ export const SelectedElementEditor: React.FC<Props> = ({
     ['smooth_curve', 'wave', 'zigzag', 'spiral', 'motion'].includes(element.subType);
 
   const isPolygonOrCrystal =
-    element.type === 'shape' && ['polygon', 'crystal'].includes(element.subType);
+    element.type === 'shape' && ['polygon', 'crystal', 'freeshape'].includes(element.subType);
 
   return (
     <div className="bg-white border-2 border-blue-400 rounded-xl p-3.5 shadow-sm space-y-3">

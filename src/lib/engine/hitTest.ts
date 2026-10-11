@@ -90,3 +90,44 @@ export function findTopHitElement(
 
   return { elementId: null, handle: null };
 }
+
+export function findElementsByBox(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  elements: ArtElement[],
+  canvasWidth: number,
+  canvasHeight: number
+): string[] {
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+  const minY = Math.min(startY, endY);
+  const maxY = Math.max(startY, endY);
+
+  const matchedIds: string[] = [];
+
+  for (const el of elements) {
+    const { px, py, w, h } = toCanvasCoords(el, canvasWidth, canvasHeight);
+    const halfW = Math.max(6, w / 2);
+    const halfH = Math.max(6, h / 2);
+
+    const elMinX = px - halfW;
+    const elMaxX = px + halfW;
+    const elMinY = py - halfH;
+    const elMaxY = py + halfH;
+
+    const overlaps =
+      elMinX <= maxX &&
+      elMaxX >= minX &&
+      elMinY <= maxY &&
+      elMaxY >= minY;
+
+    if (overlaps) {
+      matchedIds.push(el.id);
+    }
+  }
+
+  return matchedIds;
+}
+

@@ -4,7 +4,7 @@ export type ElementType = 'point' | 'line' | 'shape';
 
 export type PointSubType = 'single' | 'cluster' | 'spray' | 'heavy' | 'diamond';
 export type LineSubType = 'straight' | 'smooth_curve' | 'wave' | 'zigzag' | 'spiral' | 'dashed' | 'motion' | 'freehand';
-export type ShapeSubType = 'circle' | 'ellipse' | 'triangle' | 'rect' | 'polygon' | 'blob' | 'fragment' | 'crystal';
+export type ShapeSubType = 'circle' | 'ellipse' | 'triangle' | 'rect' | 'polygon' | 'blob' | 'fragment' | 'crystal' | 'freeshape';
 
 export type BrushStyle = 'pen' | 'brush' | 'marker' | 'glow';
 

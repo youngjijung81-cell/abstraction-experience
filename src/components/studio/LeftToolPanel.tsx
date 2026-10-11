@@ -19,8 +19,11 @@ interface Props {
   currentColor: string;
   onColorChange: (c: string) => void;
   selectedElement: ArtElement | null;
+  selectedCount?: number;
   onUpdateElement: (updated: Partial<ArtElement>) => void;
+  onUpdateMultipleColors?: (color: string) => void;
   onDeleteElement: (id: string) => void;
+  onDeleteMultiple?: () => void;
   onDuplicateElement: (id: string) => void;
   onBringForward: (id: string) => void;
   onSendBackward: (id: string) => void;
@@ -39,8 +42,11 @@ export const LeftToolPanel: React.FC<Props> = ({
   currentColor,
   onColorChange,
   selectedElement,
+  selectedCount = 0,
   onUpdateElement,
+  onUpdateMultipleColors,
   onDeleteElement,
+  onDeleteMultiple,
   onDuplicateElement,
   onBringForward,
   onSendBackward,
@@ -408,7 +414,7 @@ export const LeftToolPanel: React.FC<Props> = ({
                   elementCategory === 'shape' ? 'bg-white text-blue-600 shadow-2xs' : 'text-gray-500'
                 }`}
               >
-                면 (Shape) 8종
+                면 (Shape) 9종
               </button>
               <button
                 onClick={() => setElementCategory('line')}
@@ -588,13 +594,16 @@ export const LeftToolPanel: React.FC<Props> = ({
           </div>
         )}
 
-        {/* 선택된 요소가 있을 때 실시간 속성 편집기 표시 */}
-        {selectedElement && (
+        {/* 선택된 요소가 있을 때 (단일 또는 다중) 실시간 속성 편집기 표시 */}
+        {(selectedElement || selectedCount > 1) && (
           <div className="pt-2">
             <SelectedElementEditor
               element={selectedElement}
+              selectedCount={selectedCount}
               onUpdate={onUpdateElement}
+              onUpdateMultipleColors={onUpdateMultipleColors}
               onDelete={onDeleteElement}
+              onDeleteMultiple={onDeleteMultiple}
               onDuplicate={onDuplicateElement}
               onBringForward={onBringForward}
               onSendBackward={onSendBackward}

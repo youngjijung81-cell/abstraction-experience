@@ -3,9 +3,27 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ArtElement, EmotionKey, PrincipleKey, StudioMode, BrushStyle } from '@/lib/types';
 import { EMOTIONS } from '@/lib/constants/emotions';
-import { drawBackground, drawElement, drawSelectionBox } from '@/lib/engine/canvasRenderer';
-import { findTopHitElement, HandleType } from '@/lib/engine/hitTest';
-import { Download, Share2, Undo2, Redo2, Trash2, Eraser, Eye, MousePointer, PenTool, Sparkles } from 'lucide-react';
+import {
+  drawBackground,
+  drawElement,
+  drawSelectionBox,
+  drawMarqueeBox,
+  drawMultiSelectionOverlay
+} from '@/lib/engine/canvasRenderer';
+import { findTopHitElement, findElementsByBox, HandleType } from '@/lib/engine/hitTest';
+import {
+  Download,
+  Share2,
+  Undo2,
+  Redo2,
+  Trash2,
+  Eraser,
+  Eye,
+  MousePointer,
+  PenTool,
+  Sparkles,
+  Layers
+} from 'lucide-react';
 import Link from 'next/link';
 
 function uid(): string {
@@ -15,8 +33,14 @@ function uid(): string {
 interface Props {
   elements: ArtElement[];
   selectedId: string | null;
+  selectedIds?: string[];
   onSelectElement: (id: string | null) => void;
+  onSelectElements?: (ids: string[]) => void;
   onUpdateElementDirect: (id: string, updated: Partial<ArtElement>, pushHistory?: boolean) => void;
+  onUpdateMultipleElementsDirect?: (
+    updates: { id: string; patch: Partial<ArtElement> }[],
+    pushHistory?: boolean
+  ) => void;
   onAddDrawnStroke: (element: ArtElement) => void;
   onDeleteSelected: () => void;
   onClearAll: () => void;
@@ -35,8 +59,11 @@ interface Props {
 export const RightCanvasStage: React.FC<Props> = ({
   elements,
   selectedId,
+  selectedIds = [],
   onSelectElement,
+  onSelectElements,
   onUpdateElementDirect,
+  onUpdateMultipleElementsDirect,
   onAddDrawnStroke,
   onDeleteSelected,
   onClearAll,
@@ -53,7 +80,10 @@ export const RightCanvasStage: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // 캔버스 도구 모드: 'select' (선택/변형) vs 'draw' (자유 드로잉 펜)
+  // 현재 유효한 선택 ID 목록
+  const currentSelectedIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
+
+  // 캔버스 도구 모드: 'select' (선택/자유변형) vs 'draw' (자유 드로잉 펜)
   const [activeTool, setActiveTool] = useState<'select' | 'draw'>('select');
   const [brushStyle, setBrushStyle] = useState<BrushStyle>('pen');
   const [brushWidth, setBrushWidth] = useState<number>(5);
@@ -61,7 +91,16 @@ export const RightCanvasStage: React.FC<Props> = ({
   // 자유 드로잉 실시간 좌표 배열
   const [activeStroke, setActiveStroke] = useState<{ x: number; y: number }[] | null>(null);
 
-  // Drag & Transform State
+  // 마키 영역 선택(Box Selection) 상태
+  const [marqueeState, setMarqueeState] = useState<{
+    isSelecting: boolean;
+    startX: number;
+    startY: number;
+    currX: number;
+    currY: number;
+  } | null>(null);
+
+  // Drag & Transform State (꼭짓점 자유 변형 및 다중 이동)
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     elementId: string;
@@ -73,6 +112,7 @@ export const RightCanvasStage: React.FC<Props> = ({
     initialWidth: number;
     initialHeight: number;
     initialRotation: number;
+    multiInitialPositions?: { id: string; initialX: number; initialY: number }[];
   } | null>(null);
 
   const currEmotion = EMOTIONS.find((e) => e.key === selectedEmotion);
@@ -137,14 +177,40 @@ export const RightCanvasStage: React.FC<Props> = ({
       ctx.restore();
     }
 
-    // 4. 선택된 요소의 바운딩 박스 & 변형 핸들 오버레이 (선택 모드일 때만)
-    if (activeTool === 'select' && selectedId) {
-      const selected = elements.find((el) => el.id === selectedId);
-      if (selected) {
-        drawSelectionBox(ctx, selected, width, height);
+    // 4. 다중 선택 및 단일 선택 바운딩 박스 & 변형 핸들 오버레이 (선택 모드일 때만)
+    if (activeTool === 'select') {
+      if (currentSelectedIds.length > 1) {
+        // 다중 선택 하이라이트
+        drawMultiSelectionOverlay(ctx, elements, currentSelectedIds, width, height);
+      } else if (currentSelectedIds.length === 1) {
+        // 단일 선택: 꼭짓점 변형 핸들이 달린 바운딩 박스
+        const target = elements.find((el) => el.id === currentSelectedIds[0]);
+        if (target) {
+          drawSelectionBox(ctx, target, width, height);
+        }
       }
     }
-  }, [elements, selectedId, activeTool, activeStroke, currentColor, brushWidth, brushStyle]);
+
+    // 5. 마키 영역 드래그 선택 박스 렌더링
+    if (marqueeState && marqueeState.isSelecting) {
+      drawMarqueeBox(
+        ctx,
+        marqueeState.startX,
+        marqueeState.startY,
+        marqueeState.currX,
+        marqueeState.currY
+      );
+    }
+  }, [
+    elements,
+    currentSelectedIds,
+    activeTool,
+    activeStroke,
+    currentColor,
+    brushWidth,
+    brushStyle,
+    marqueeState
+  ]);
 
   // 반응형 캔버스 크기 리사이즈 핸들러
   useEffect(() => {
@@ -201,12 +267,52 @@ export const RightCanvasStage: React.FC<Props> = ({
     }
 
     // 선택 모드
-    const hit = findTopHitElement(clickX, clickY, elements, selectedId, currentLogicalW, currentLogicalH);
+    const activeSingleId = currentSelectedIds.length === 1 ? currentSelectedIds[0] : null;
+    const hit = findTopHitElement(
+      clickX,
+      clickY,
+      elements,
+      activeSingleId,
+      currentLogicalW,
+      currentLogicalH
+    );
 
     if (hit.elementId) {
-      onSelectElement(hit.elementId);
       const target = elements.find((el) => el.id === hit.elementId);
-      if (target) {
+      if (!target) return;
+
+      // 이미 다중 선택된 요소 중 하나를 잡고 이동하려는 경우
+      const isAlreadyInMulti = currentSelectedIds.includes(hit.elementId);
+
+      if (isAlreadyInMulti && currentSelectedIds.length > 1 && hit.handle === 'move') {
+        // 다중 선택 요소 전체 함께 이동 준비
+        const multiPositions = currentSelectedIds
+          .map((id) => {
+            const el = elements.find((e) => e.id === id);
+            return el ? { id: el.id, initialX: el.x, initialY: el.y } : null;
+          })
+          .filter(Boolean) as { id: string; initialX: number; initialY: number }[];
+
+        setDragState({
+          isDragging: true,
+          elementId: target.id,
+          handle: 'move',
+          startX: clickX,
+          startY: clickY,
+          initialX: target.x,
+          initialY: target.y,
+          initialWidth: target.width,
+          initialHeight: target.height,
+          initialRotation: target.rotation,
+          multiInitialPositions: multiPositions
+        });
+      } else {
+        // 단일 선택으로 전환 및 변형 준비
+        onSelectElement(hit.elementId);
+        if (onSelectElements) {
+          onSelectElements([hit.elementId]);
+        }
+
         setDragState({
           isDragging: true,
           elementId: target.id,
@@ -221,7 +327,18 @@ export const RightCanvasStage: React.FC<Props> = ({
         });
       }
     } else {
+      // 빈 공간 클릭 -> 마키 영역 선택(Marquee Box) 시작
       onSelectElement(null);
+      if (onSelectElements) {
+        onSelectElements([]);
+      }
+      setMarqueeState({
+        isSelecting: true,
+        startX: clickX,
+        startY: clickY,
+        currX: clickX,
+        currY: clickY
+      });
     }
   };
 
@@ -238,6 +355,7 @@ export const RightCanvasStage: React.FC<Props> = ({
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
 
+    // 1) 자유 드로잉 중
     if (activeTool === 'draw' && activeStroke) {
       const pctX = ((currX - w / 2) / w) * 100;
       const pctY = ((currY - h / 2) / h) * 100;
@@ -245,16 +363,47 @@ export const RightCanvasStage: React.FC<Props> = ({
       return;
     }
 
+    // 2) 마키 영역 드래그 선택 중
+    if (marqueeState && marqueeState.isSelecting) {
+      setMarqueeState((prev) => (prev ? { ...prev, currX, currY } : null));
+      return;
+    }
+
+    // 3) 요소 이동 및 꼭짓점 자유 변형 중
     if (!dragState || !dragState.isDragging) return;
 
     const deltaX = currX - dragState.startX;
     const deltaY = currY - dragState.startY;
 
     if (dragState.handle === 'move') {
-      const newX = dragState.initialX + (deltaX / w) * 100;
-      const newY = dragState.initialY + (deltaY / h) * 100;
-      onUpdateElementDirect(dragState.elementId, { x: newX, y: newY }, false);
+      if (dragState.multiInitialPositions && dragState.multiInitialPositions.length > 1) {
+        // 다중 요소 함께 이동
+        const deltaPctX = (deltaX / w) * 100;
+        const deltaPctY = (deltaY / h) * 100;
+
+        if (onUpdateMultipleElementsDirect) {
+          const updates = dragState.multiInitialPositions.map((pos) => ({
+            id: pos.id,
+            patch: { x: pos.initialX + deltaPctX, y: pos.initialY + deltaPctY }
+          }));
+          onUpdateMultipleElementsDirect(updates, false);
+        } else {
+          dragState.multiInitialPositions.forEach((pos) => {
+            onUpdateElementDirect(
+              pos.id,
+              { x: pos.initialX + deltaPctX, y: pos.initialY + deltaPctY },
+              false
+            );
+          });
+        }
+      } else {
+        // 단일 요소 이동
+        const newX = dragState.initialX + (deltaX / w) * 100;
+        const newY = dragState.initialY + (deltaY / h) * 100;
+        onUpdateElementDirect(dragState.elementId, { x: newX, y: newY }, false);
+      }
     } else if (dragState.handle === 'rotate') {
+      // 회전 핸들
       const target = elements.find((el) => el.id === dragState.elementId);
       if (!target) return;
       const cx = w / 2 + (target.x / 100) * w;
@@ -262,19 +411,49 @@ export const RightCanvasStage: React.FC<Props> = ({
       const angleRad = Math.atan2(currY - cy, currX - cx);
       const angleDeg = (angleRad * 180) / Math.PI + 90;
       onUpdateElementDirect(dragState.elementId, { rotation: (angleDeg + 360) % 360 }, false);
-    } else if (dragState.handle) {
-      const scaleDelta = (deltaX + deltaY) / 4;
-      const newWidth = Math.max(5, dragState.initialWidth + scaleDelta);
-      const ratio = dragState.initialHeight / (dragState.initialWidth || 1);
-      const newHeight = Math.max(2, newWidth * ratio);
+    } else if (dragState.handle && ['nw', 'ne', 'se', 'sw'].includes(dragState.handle)) {
+      // ★ 꼭짓점 자유 변형 (가로·세로 독립 신축 왜곡)
+      // 요소의 회전각도에 따른 로컬 좌표계로 마우스 이동량을 역회전 투영
+      const rad = (dragState.initialRotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      const pctDx = (deltaX / w) * 100;
+      const pctDy = (deltaY / h) * 100;
+      const localDx = pctDx * cos + pctDy * sin;
+      const localDy = -pctDx * sin + pctDy * cos;
+
+      let newWidth = dragState.initialWidth;
+      let newHeight = dragState.initialHeight;
+
+      // 사용자가 꼭짓점을 잡아당기는 방향에 맞춰 형태가 길어지고 찌그러지는 직관적 자유 변형
+      switch (dragState.handle) {
+        case 'se': // 우하단
+          newWidth = Math.max(2, dragState.initialWidth + localDx);
+          newHeight = Math.max(2, dragState.initialHeight + localDy);
+          break;
+        case 'ne': // 우상단
+          newWidth = Math.max(2, dragState.initialWidth + localDx);
+          newHeight = Math.max(2, dragState.initialHeight - localDy);
+          break;
+        case 'sw': // 좌하단
+          newWidth = Math.max(2, dragState.initialWidth - localDx);
+          newHeight = Math.max(2, dragState.initialHeight + localDy);
+          break;
+        case 'nw': // 좌상단
+          newWidth = Math.max(2, dragState.initialWidth - localDx);
+          newHeight = Math.max(2, dragState.initialHeight - localDy);
+          break;
+      }
+
       onUpdateElementDirect(dragState.elementId, { width: newWidth, height: newHeight }, false);
     }
   };
 
   // 마우스/터치 업
   const handlePointerUp = () => {
+    // 1) 자유 드로잉 완료
     if (activeTool === 'draw' && activeStroke && activeStroke.length > 0) {
-      // 드로잉 완료 -> 영구 조형 요소(ArtElement)로 등록
       const nextZ = elements.length > 0 ? Math.max(...elements.map((e) => e.zIndex || 0)) + 1 : 1;
       const newStrokeElement: ArtElement = {
         id: uid(),
@@ -297,21 +476,81 @@ export const RightCanvasStage: React.FC<Props> = ({
       return;
     }
 
-    if (dragState && dragState.isDragging) {
-      const target = elements.find((el) => el.id === dragState.elementId);
-      if (target) {
-        onUpdateElementDirect(target.id, {}, true);
+    // 2) 마키 영역 드래그 선택 완료
+    if (marqueeState && marqueeState.isSelecting) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.width / dpr;
+        const h = canvas.height / dpr;
+
+        const dragDist = Math.hypot(
+          marqueeState.currX - marqueeState.startX,
+          marqueeState.currY - marqueeState.startY
+        );
+
+        if (dragDist > 6) {
+          // 사각형 영역에 걸치거나 포함된 모든 요소 검색
+          const matchedIds = findElementsByBox(
+            marqueeState.startX,
+            marqueeState.startY,
+            marqueeState.currX,
+            marqueeState.currY,
+            elements,
+            w,
+            h
+          );
+
+          if (matchedIds.length > 0) {
+            if (onSelectElements) {
+              onSelectElements(matchedIds);
+            }
+            onSelectElement(matchedIds[0]);
+          } else {
+            onSelectElement(null);
+            if (onSelectElements) {
+              onSelectElements([]);
+            }
+          }
+        }
       }
+      setMarqueeState(null);
+      return;
     }
-    setDragState(null);
+
+    // 3) 드래그 및 변형 완료 -> 히스토리에 최종 상태 기록
+    if (dragState && dragState.isDragging) {
+      if (dragState.multiInitialPositions && dragState.multiInitialPositions.length > 1) {
+        // 다중 요소 이동 종료 히스토리 기록
+        if (onUpdateMultipleElementsDirect) {
+          onUpdateMultipleElementsDirect([], true);
+        }
+      } else {
+        const target = elements.find((el) => el.id === dragState.elementId);
+        if (target) {
+          onUpdateElementDirect(
+            dragState.elementId,
+            {
+              x: target.x,
+              y: target.y,
+              width: target.width,
+              height: target.height,
+              rotation: target.rotation
+            },
+            true
+          );
+        }
+      }
+      setDragState(null);
+    }
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-100/80 overflow-hidden">
-      {/* 1. 상단 액션 툴바 */}
-      <div className="bg-white border-b border-gray-200 px-3 py-2 flex flex-wrap items-center justify-between shadow-2xs gap-2">
+    <div className="w-full h-full flex flex-col bg-slate-100 select-none">
+      {/* 1. 상단 툴바: 선택 모드 / 자유 드로잉 모드 토글 및 실행 취소/다시실행 */}
+      <div className="bg-white border-b border-gray-200 px-3.5 py-2 flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-1.5">
-          {/* 도구 전환: 선택 vs 자유 드로잉 */}
+          {/* 모드 전환 토글 */}
           <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
             <button
               onClick={() => setActiveTool('select')}
@@ -321,51 +560,47 @@ export const RightCanvasStage: React.FC<Props> = ({
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <MousePointer size={13} />
-              <span>선택·변형</span>
+              <MousePointer size={14} />
+              <span>선택 & 자유변형</span>
             </button>
             <button
-              onClick={() => {
-                setActiveTool('draw');
-                onSelectElement(null);
-              }}
+              onClick={() => setActiveTool('draw')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition ${
                 activeTool === 'draw'
                   ? 'bg-blue-600 text-white shadow-2xs'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <PenTool size={13} />
+              <PenTool size={14} />
               <span>자유 드로잉</span>
             </button>
           </div>
 
-          {/* 자유 드로잉 전용 펜 옵션 바 */}
+          {/* 브러시 세부 설정 (자유 드로잉 활성화 시) */}
           {activeTool === 'draw' && (
-            <div className="flex items-center gap-1.5 pl-1.5 border-l border-gray-200 text-xs">
+            <div className="flex items-center gap-1.5 ml-1 bg-blue-50/80 px-2 py-1 rounded-lg border border-blue-200 text-xs">
+              <span className="font-bold text-blue-900 text-[11px]">브러시:</span>
               <select
                 value={brushStyle}
                 onChange={(e) => setBrushStyle(e.target.value as BrushStyle)}
-                className="px-2 py-1 bg-white border border-gray-300 rounded-md text-xs font-semibold text-gray-700"
+                className="bg-white border border-blue-200 rounded px-1.5 py-0.5 text-xs text-blue-950 font-medium"
               >
-                <option value="pen">일반 펜 (Pen)</option>
-                <option value="brush">미술 붓 (Brush)</option>
-                <option value="marker">형광 마커 (Marker)</option>
-                <option value="glow">네온 발광 (Glow)</option>
+                <option value="pen">펜 (기본)</option>
+                <option value="brush">붓 (유화감)</option>
+                <option value="marker">마커 (반투명)</option>
+                <option value="glow">네온 (발광)</option>
               </select>
 
-              <div className="flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
-                <span className="text-[10px] text-gray-500 font-bold">굵기</span>
-                <input
-                  type="range"
-                  min="2"
-                  max="28"
-                  value={brushWidth}
-                  onChange={(e) => setBrushWidth(Number(e.target.value))}
-                  className="w-16 h-1.5 bg-gray-200 rounded appearance-none accent-blue-600 cursor-pointer"
-                />
-                <span className="text-[10px] font-mono text-gray-600">{brushWidth}px</span>
-              </div>
+              <span className="font-bold text-blue-900 text-[11px] ml-1">굵기:</span>
+              <input
+                type="range"
+                min="2"
+                max="25"
+                value={brushWidth}
+                onChange={(e) => setBrushWidth(Number(e.target.value))}
+                className="w-16 h-1 bg-blue-200 rounded appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="font-mono text-[11px] text-blue-800 font-bold">{brushWidth}px</span>
             </div>
           )}
 
@@ -390,15 +625,14 @@ export const RightCanvasStage: React.FC<Props> = ({
           </button>
 
           {/* 선택 삭제 */}
-          {activeTool === 'select' && (
+          {activeTool === 'select' && currentSelectedIds.length > 0 && (
             <button
               onClick={onDeleteSelected}
-              disabled={!selectedId}
               title="선택된 요소 삭제"
-              className="flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-red-50 hover:border-red-200 disabled:opacity-40 text-xs font-medium text-gray-600 hover:text-red-600 transition"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition"
             >
               <Trash2 size={13} />
-              <span>삭제</span>
+              <span>{currentSelectedIds.length > 1 ? `${currentSelectedIds.length}개 삭제` : '삭제'}</span>
             </button>
           )}
 
@@ -413,16 +647,22 @@ export const RightCanvasStage: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* 현재 상태 정보 뱃지 */}
+        {/* 현재 상태 정보 뱃지 및 다중 선택 안내 */}
         <div className="flex items-center gap-2 text-xs">
-          {currEmotion && (
+          {currentSelectedIds.length > 1 ? (
+            <div className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200 font-bold text-[11px]">
+              <Layers size={12} />
+              <span>{currentSelectedIds.length}개 다중 선택됨</span>
+            </div>
+          ) : currEmotion ? (
             <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-semibold text-[11px]">
               <span>{currEmotion.emoji}</span>
               <span>{currEmotion.koreanName}</span>
             </div>
-          )}
+          ) : null}
+
           <span className="text-gray-400 font-mono text-[11px]">
-            요소: {elements.length}개
+            총 요소: {elements.length}개
           </span>
         </div>
       </div>
@@ -438,15 +678,21 @@ export const RightCanvasStage: React.FC<Props> = ({
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className={`touch-none block ${activeTool === 'draw' ? 'cursor-crosshair' : 'cursor-default'}`}
+            className={`touch-none block ${
+              activeTool === 'draw'
+                ? 'cursor-crosshair'
+                : marqueeState?.isSelecting
+                ? 'cursor-crosshair'
+                : 'cursor-default'
+            }`}
           />
 
           {elements.length === 0 && !activeStroke && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-white/80 pointer-events-none">
               <span className="text-3xl mb-2">🎨</span>
               <p className="text-sm font-bold text-gray-700">빈 캔버스입니다</p>
-              <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                상단의 <strong>[자유 드로잉]</strong> 펜으로 마음껏 그리거나, 왼쪽 도구창에서 [조형 요소]를 추가해 보세요.
+              <p className="text-xs text-gray-500 mt-1 max-w-xs leading-relaxed">
+                왼쪽 도구창에서 조형 요소를 추가하거나, 마우스로 크게 드래그하여 여러 요소를 한 번에 선택할 수 있습니다.
               </p>
             </div>
           )}

@@ -126,24 +126,26 @@ function drawFreehandStroke(
 }
 
 function drawPoint(ctx: CanvasRenderingContext2D, subType: string, halfW: number, halfH: number) {
-  const r = Math.max(2, Math.min(halfW, halfH));
+  const rx = Math.max(2, halfW);
+  const ry = Math.max(2, halfH);
+  const r = Math.min(rx, ry);
   switch (subType) {
     case 'single':
       ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
       ctx.fill();
       break;
     case 'heavy':
       ctx.beginPath();
-      ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, rx * 1.4, ry * 1.4, 0, 0, Math.PI * 2);
       ctx.fill();
       break;
     case 'diamond':
       ctx.beginPath();
-      ctx.moveTo(0, -r * 1.4);
-      ctx.lineTo(r * 1.4, 0);
-      ctx.lineTo(0, r * 1.4);
-      ctx.lineTo(-r * 1.4, 0);
+      ctx.moveTo(0, -ry * 1.4);
+      ctx.lineTo(rx * 1.4, 0);
+      ctx.lineTo(0, ry * 1.4);
+      ctx.lineTo(-rx * 1.4, 0);
       ctx.closePath();
       ctx.fill();
       break;
@@ -306,8 +308,7 @@ function drawShape(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: nu
 
   switch (subType) {
     case 'circle': {
-      const r = Math.min(halfW, halfH);
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, halfW, halfH, 0, 0, Math.PI * 2);
       break;
     }
 
@@ -330,18 +331,16 @@ function drawShape(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: nu
     }
 
     case 'polygon': {
-      // 3~10각 수 및 비대칭 왜곡(Distortion) 지원 추상 다면체
+      // 3~10각 수 및 비대칭 왜곡(Distortion) 지원 추상 다면체 (가로/세로 독립 신축 지원)
       const sides = Math.max(3, Math.min(10, element.sides || 6));
       const dist = Math.max(0, Math.min(1, element.distortion || 0));
-      const polyR = Math.min(halfW, halfH);
 
       for (let i = 0; i < sides; i++) {
         const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
         // 시드형 왜곡 적용: 홀짝 및 인덱스에 따라 각 꼭짓점 반지름 변형
         const mod = 1 + dist * (Math.sin(i * 2.5) * 0.45);
-        const r = polyR * mod;
-        const x = Math.cos(angle) * r;
-        const y = Math.sin(angle) * r;
+        const x = Math.cos(angle) * halfW * mod;
+        const y = Math.sin(angle) * halfH * mod;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -350,16 +349,32 @@ function drawShape(ctx: CanvasRenderingContext2D, element: ArtElement, halfW: nu
     }
 
     case 'crystal': {
-      // 추상 결정체: 각진 다면 분할 형태
+      // 추상 결정체: 각진 다면 분할 형태 (가로/세로 독립 신축 지원)
       const sides = Math.max(4, Math.min(8, element.sides || 6));
       const dist = element.distortion || 0.2;
-      const r = Math.min(halfW, halfH);
 
       for (let i = 0; i < sides; i++) {
         const angle = (i * 2 * Math.PI) / sides;
         const radFactor = i % 2 === 0 ? 1 : 0.65 + dist * 0.3;
-        const x = Math.cos(angle) * r * radFactor;
-        const y = Math.sin(angle) * r * radFactor;
+        const x = Math.cos(angle) * halfW * radFactor;
+        const y = Math.sin(angle) * halfH * radFactor;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      break;
+    }
+
+    case 'freeshape': {
+      // 자유면: 꼭짓점 핸들을 당길 때 가로·세로로 드라마틱하게 찌그러지고 변형되는 유기적 조형 면
+      const sides = Math.max(3, Math.min(10, element.sides || 5));
+      const dist = Math.max(0.15, element.distortion ?? 0.35);
+
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+        const mod = 1 + dist * Math.sin(i * 3 + 1.2);
+        const x = Math.cos(angle) * halfW * mod;
+        const y = Math.sin(angle) * halfH * mod;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -447,3 +462,64 @@ export function drawSelectionBox(
 
   ctx.restore();
 }
+
+export function drawMarqueeBox(
+  ctx: CanvasRenderingContext2D,
+  startX: number,
+  startY: number,
+  currentX: number,
+  currentY: number
+) {
+  const minX = Math.min(startX, currentX);
+  const minY = Math.min(startY, currentY);
+  const width = Math.abs(currentX - startX);
+  const height = Math.abs(currentY - startY);
+
+  if (width < 2 && height < 2) return;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+  ctx.fillRect(minX, minY, width, height);
+
+  ctx.strokeStyle = '#2563EB';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(minX, minY, width, height);
+  ctx.restore();
+}
+
+export function drawMultiSelectionOverlay(
+  ctx: CanvasRenderingContext2D,
+  elements: ArtElement[],
+  selectedIds: string[],
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  if (selectedIds.length <= 1) return;
+
+  ctx.save();
+  ctx.strokeStyle = '#2563EB';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+
+  for (const id of selectedIds) {
+    const el = elements.find((e) => e.id === id);
+    if (!el) continue;
+    const { px, py, w, h } = toCanvasCoords(el, canvasWidth, canvasHeight);
+    const pad = 8;
+    const strokeExtra = el.strokeWidth || 0;
+    const boxW = Math.max(16, w + pad * 2);
+    const boxH = Math.max(16, Math.max(h, strokeExtra) + pad * 2);
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate((el.rotation * Math.PI) / 180);
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+    ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+    ctx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+

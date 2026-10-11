@@ -26,7 +26,8 @@ export const SplitStudio: React.FC = () => {
   const [elements, setElements] = useState<ArtElement[]>([]);
   const [history, setHistory] = useState<ArtElement[][]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null;
 
   // 모달 상태
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
@@ -57,12 +58,12 @@ export const SplitStudio: React.FC = () => {
       const empty: ArtElement[] = [];
       setElements(empty);
       pushHistory(empty);
-      setSelectedId(null);
+      setSelectedIds([]);
     } else if (newMode === 'auto') {
       const generated = generateArtByEmotion(selectedEmotion);
       setElements(generated);
       pushHistory(generated);
-      setSelectedId(null);
+      setSelectedIds([]);
     }
   };
 
@@ -73,7 +74,7 @@ export const SplitStudio: React.FC = () => {
       const generated = generateArtByEmotion(emotion);
       setElements(generated);
       pushHistory(generated);
-      setSelectedId(null);
+      setSelectedIds([]);
     }
   };
 
@@ -120,7 +121,7 @@ export const SplitStudio: React.FC = () => {
       setElements(nextElements);
       pushHistory(nextElements);
       // 첫 번째 점을 기본 선택 상태로 지정하여 즉시 조작 가능하게 함
-      setSelectedId(newSprayDots[0].id);
+      setSelectedIds([newSprayDots[0].id]);
       return;
     }
 
@@ -164,8 +165,8 @@ export const SplitStudio: React.FC = () => {
       strokeWidth: type === 'line' ? 4 : 2,
       frequency: subType === 'dashed' ? 8 : (['smooth_curve', 'wave', 'zigzag', 'spiral', 'motion'].includes(subType) ? 4 : undefined),
       amplitude: 1,
-      sides: subType === 'polygon' ? 5 : undefined,
-      distortion: 0,
+      sides: (subType === 'polygon' || subType === 'freeshape') ? 5 : undefined,
+      distortion: subType === 'freeshape' ? 0.35 : 0,
       fill: true,
       zIndex: nextZ
     };
@@ -173,7 +174,7 @@ export const SplitStudio: React.FC = () => {
     const nextElements = [...elements, newElement];
     setElements(nextElements);
     pushHistory(nextElements);
-    setSelectedId(newElement.id);
+    setSelectedIds([newElement.id]);
   };
 
   // 자유 드로잉 획 추가
@@ -198,7 +199,7 @@ export const SplitStudio: React.FC = () => {
     pushHistory(transformed);
   };
 
-  // 선택된 요소 속성 업데이트
+  // 선택된 요소 속성 업데이트 (단일)
   const handleUpdateElement = (updated: Partial<ArtElement>) => {
     if (!selectedId) return;
     const nextElements = elements.map((el) => {
@@ -211,7 +212,20 @@ export const SplitStudio: React.FC = () => {
     pushHistory(nextElements);
   };
 
-  // 캔버스 드래그 중 실시간 업데이트
+  // 다중 선택 색상 일괄 변경
+  const handleUpdateMultipleColors = (color: string) => {
+    if (selectedIds.length === 0) return;
+    const nextElements = elements.map((el) => {
+      if (selectedIds.includes(el.id)) {
+        return { ...el, color };
+      }
+      return el;
+    });
+    setElements(nextElements);
+    pushHistory(nextElements);
+  };
+
+  // 캔버스 드래그 중 실시간 업데이트 (단일)
   const handleUpdateElementDirect = (id: string, updated: Partial<ArtElement>, shouldPushHistory?: boolean) => {
     const nextElements = elements.map((el) => {
       if (el.id === id) {
@@ -225,14 +239,42 @@ export const SplitStudio: React.FC = () => {
     }
   };
 
-  // 선택된 요소 삭제
+  // 캔버스 드래그 중 다중 요소 실시간 동시 이동
+  const handleUpdateMultipleElementsDirect = (
+    updates: { id: string; patch: Partial<ArtElement> }[],
+    shouldPushHistory?: boolean
+  ) => {
+    if (updates.length === 0) {
+      if (shouldPushHistory) {
+        pushHistory(elements);
+      }
+      return;
+    }
+    const updateMap = new Map(updates.map((u) => [u.id, u.patch]));
+    const nextElements = elements.map((el) => {
+      const patch = updateMap.get(el.id);
+      return patch ? { ...el, ...patch } : el;
+    });
+    setElements(nextElements);
+    if (shouldPushHistory) {
+      pushHistory(nextElements);
+    }
+  };
+
+  // 선택된 요소 삭제 (단일 및 다중 지원)
   const handleDeleteElement = (id: string) => {
     const nextElements = elements.filter((el) => el.id !== id);
     setElements(nextElements);
     pushHistory(nextElements);
-    if (selectedId === id) {
-      setSelectedId(null);
-    }
+    setSelectedIds((prev) => prev.filter((item) => item !== id));
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    const nextElements = elements.filter((el) => !selectedIds.includes(el.id));
+    setElements(nextElements);
+    pushHistory(nextElements);
+    setSelectedIds([]);
   };
 
   // 요소 복제
@@ -250,7 +292,7 @@ export const SplitStudio: React.FC = () => {
     const nextElements = [...elements, duplicated];
     setElements(nextElements);
     pushHistory(nextElements);
-    setSelectedId(duplicated.id);
+    setSelectedIds([duplicated.id]);
   };
 
   // 레이어 순서 앞/뒤
@@ -282,7 +324,7 @@ export const SplitStudio: React.FC = () => {
       const empty: ArtElement[] = [];
       setElements(empty);
       pushHistory(empty);
-      setSelectedId(null);
+      setSelectedIds([]);
       setActivePrinciples([]);
     }
   };
@@ -293,7 +335,7 @@ export const SplitStudio: React.FC = () => {
       const nextIndex = historyIndex - 1;
       setHistoryIndex(nextIndex);
       setElements(history[nextIndex]);
-      setSelectedId(null);
+      setSelectedIds([]);
     }
   };
 
@@ -302,7 +344,7 @@ export const SplitStudio: React.FC = () => {
       const nextIndex = historyIndex + 1;
       setHistoryIndex(nextIndex);
       setElements(history[nextIndex]);
-      setSelectedId(null);
+      setSelectedIds([]);
     }
   };
 
@@ -323,12 +365,15 @@ export const SplitStudio: React.FC = () => {
           currentColor={currentColor}
           onColorChange={setCurrentColor}
           selectedElement={selectedElement}
+          selectedCount={selectedIds.length}
           onUpdateElement={handleUpdateElement}
+          onUpdateMultipleColors={handleUpdateMultipleColors}
           onDeleteElement={handleDeleteElement}
+          onDeleteMultiple={handleDeleteSelected}
           onDuplicateElement={handleDuplicateElement}
           onBringForward={handleBringForward}
           onSendBackward={handleSendBackward}
-          onDeselect={() => setSelectedId(null)}
+          onDeselect={() => setSelectedIds([])}
           onOpenGuide={() => setIsGuideOpen(true)}
         />
       </div>
@@ -338,10 +383,13 @@ export const SplitStudio: React.FC = () => {
         <RightCanvasStage
           elements={elements}
           selectedId={selectedId}
-          onSelectElement={setSelectedId}
+          selectedIds={selectedIds}
+          onSelectElement={(id) => setSelectedIds(id ? [id] : [])}
+          onSelectElements={(ids) => setSelectedIds(ids)}
           onUpdateElementDirect={handleUpdateElementDirect}
+          onUpdateMultipleElementsDirect={handleUpdateMultipleElementsDirect}
           onAddDrawnStroke={handleAddDrawnStroke}
-          onDeleteSelected={() => selectedId && handleDeleteElement(selectedId)}
+          onDeleteSelected={handleDeleteSelected}
           onClearAll={handleClearAll}
           onUndo={handleUndo}
           onRedo={handleRedo}

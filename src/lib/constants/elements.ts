@@ -187,5 +187,14 @@ export const SHAPE_TEMPLATES: ElementTemplate[] = [
     description: '형태가 해체되거나 튀어나온 듯한 입체파풍 파편형 조각',
     defaultWidth: 20,
     defaultHeight: 24
+  },
+  {
+    type: 'shape',
+    subType: 'freeshape',
+    name: '자유면 (Free Shape)',
+    icon: '⬟',
+    description: '꼭짓점 핸들을 당겨 가로·세로로 자유롭게 찌그러뜨리고 변형할 수 있는 유기적 조형 면',
+    defaultWidth: 26,
+    defaultHeight: 26
   }
 ];
