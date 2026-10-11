@@ -107,8 +107,8 @@ export const ConceptGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </h4>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-700">
               <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
-                <span className="font-bold text-indigo-900 block">🖱️ 마우스 드래그 다중 선택</span>
-                <span>캔버스 빈 공간을 크게 드래그하면 영역 안의 여러 요소를 한 번에 선택하여 일괄 이동·색상 변경할 수 있습니다.</span>
+                <span className="font-bold text-indigo-900 block">🖱️ 다중 선택 도구 & 전체 선택</span>
+                <span>상단 [다중 선택 도구]로 드래그하거나 [전체 선택] 버튼을 누르면 여러 요소를 한 번에 묶어 일괄 이동·복제·색상 변경할 수 있습니다.</span>
               </div>
               <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
                 <span className="font-bold text-indigo-900 block">📐 자유 변형 & 가로·세로 신축</span>
@@ -123,8 +123,8 @@ export const ConceptGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <span>[색채] 탭에서 [캔버스 배경색]을 골라 한지·린넨 질감이나 22색 표준 배색을 배경으로 깔아 분위기를 바꿀 수 있습니다.</span>
               </div>
               <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
-                <span className="font-bold text-indigo-900 block">✨ 흩뿌림 점의 개별 제어</span>
-                <span>[점] 탭의 [흩뿌림] 도구를 누르면 개별 점들이 생성되어, 원하는 점만 골라 크기와 색상을 따로 바꿀 수 있습니다.</span>
+                <span className="font-bold text-indigo-900 block">✨ 자동 생성 & 흩뿌림 점의 개별 제어</span>
+                <span>감정 선택 시 나오는 점군이나 [흩뿌림] 도구의 점들은 모두 독립적인 점입니다. 하나씩 골라 크기와 색상을 따로 바꿀 수 있습니다.</span>
               </div>
               <div className="bg-white/80 p-2 rounded-lg border border-indigo-100/60">
                 <span className="font-bold text-indigo-900 block">✏️ 자유 드로잉 & 브러시</span>

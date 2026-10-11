@@ -23,7 +23,10 @@ import {
   PenTool,
   Sparkles,
   Layers,
-  Copy
+  Copy,
+  BoxSelect,
+  CheckSquare,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -88,8 +91,8 @@ export const RightCanvasStage: React.FC<Props> = ({
   // 현재 유효한 선택 ID 목록
   const currentSelectedIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
 
-  // 캔버스 도구 모드: 'select' (선택/자유변형) vs 'draw' (자유 드로잉 펜)
-  const [activeTool, setActiveTool] = useState<'select' | 'draw'>('select');
+  // 캔버스 도구 모드: 'select' (선택/자유변형) vs 'multi' (영역/탭 다중 선택 도구) vs 'draw' (자유 드로잉 펜)
+  const [activeTool, setActiveTool] = useState<'select' | 'multi' | 'draw'>('select');
   const [brushStyle, setBrushStyle] = useState<BrushStyle>('pen');
   const [brushWidth, setBrushWidth] = useState<number>(5);
 
@@ -182,8 +185,8 @@ export const RightCanvasStage: React.FC<Props> = ({
       ctx.restore();
     }
 
-    // 4. 다중 선택 및 단일 선택 바운딩 박스 & 변형 핸들 오버레이 (선택 모드일 때만)
-    if (activeTool === 'select') {
+    // 4. 다중 선택 및 단일 선택 바운딩 박스 & 변형 핸들 오버레이
+    if (activeTool === 'select' || activeTool === 'multi') {
       if (currentSelectedIds.length > 1) {
         // 다중 선택 하이라이트
         drawMultiSelectionOverlay(ctx, elements, currentSelectedIds, width, height);
@@ -251,6 +254,25 @@ export const RightCanvasStage: React.FC<Props> = ({
     renderCanvas();
   }, [renderCanvas]);
 
+  // 모든 요소 전체 선택
+  const handleSelectAll = () => {
+    const allIds = elements.map((e) => e.id);
+    if (onSelectElements) {
+      onSelectElements(allIds);
+    }
+    if (allIds.length > 0) {
+      onSelectElement(allIds[0]);
+    }
+  };
+
+  // 선택 해제
+  const handleClearSelection = () => {
+    if (onSelectElements) {
+      onSelectElements([]);
+    }
+    onSelectElement(null);
+  };
+
   // 마우스/터치 다운
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -272,7 +294,19 @@ export const RightCanvasStage: React.FC<Props> = ({
       return;
     }
 
-    // 선택 모드
+    if (activeTool === 'multi') {
+      // ★ 다중 선택 도구 모드: 어디서나 드래그하여 영역 사각형을 만들거나, 탭하여 요소를 토글 선택
+      setMarqueeState({
+        isSelecting: true,
+        startX: clickX,
+        startY: clickY,
+        currX: clickX,
+        currY: clickY
+      });
+      return;
+    }
+
+    // 선택 & 자유변형 모드
     const activeSingleId = currentSelectedIds.length === 1 ? currentSelectedIds[0] : null;
     const hit = findTopHitElement(
       clickX,
@@ -286,6 +320,16 @@ export const RightCanvasStage: React.FC<Props> = ({
     if (hit.elementId) {
       const target = elements.find((el) => el.id === hit.elementId);
       if (!target) return;
+
+      // Shift 키 누른 상태로 클릭 -> 다중 선택 토글
+      if (e.shiftKey) {
+        const nextIds = currentSelectedIds.includes(hit.elementId)
+          ? currentSelectedIds.filter((id) => id !== hit.elementId)
+          : [...currentSelectedIds, hit.elementId];
+        if (onSelectElements) onSelectElements(nextIds);
+        onSelectElement(nextIds.length > 0 ? nextIds[nextIds.length - 1] : null);
+        return;
+      }
 
       // 이미 다중 선택된 요소 중 하나를 잡고 이동하려는 경우
       const isAlreadyInMulti = currentSelectedIds.includes(hit.elementId);
@@ -518,6 +562,28 @@ export const RightCanvasStage: React.FC<Props> = ({
               onSelectElements([]);
             }
           }
+        } else if (activeTool === 'multi') {
+          // 다중 선택 도구 상태에서 탭/클릭: 해당 요소를 선택 목록에 토글 추가/제거
+          const hit = findTopHitElement(
+            marqueeState.startX,
+            marqueeState.startY,
+            elements,
+            null,
+            w,
+            h
+          );
+          if (hit.elementId) {
+            const nextIds = currentSelectedIds.includes(hit.elementId)
+              ? currentSelectedIds.filter((id) => id !== hit.elementId)
+              : [...currentSelectedIds, hit.elementId];
+            if (onSelectElements) onSelectElements(nextIds);
+            onSelectElement(nextIds.length > 0 ? nextIds[nextIds.length - 1] : null);
+          } else {
+            onSelectElement(null);
+            if (onSelectElements) {
+              onSelectElements([]);
+            }
+          }
         }
       }
       setMarqueeState(null);
@@ -556,10 +622,11 @@ export const RightCanvasStage: React.FC<Props> = ({
       {/* 1. 상단 툴바: 선택 모드 / 자유 드로잉 모드 토글 및 실행 취소/다시실행 */}
       <div className="bg-white border-b border-gray-200 px-3.5 py-2 flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-1.5">
-          {/* 모드 전환 토글 */}
+          {/* 모드 전환 토글: 단일 선택 vs 다중 선택 도구 vs 자유 드로잉 */}
           <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
             <button
               onClick={() => setActiveTool('select')}
+              title="단일 요소 선택 및 8방향 꼭짓점 자유 변형 핸들"
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition ${
                 activeTool === 'select'
                   ? 'bg-white text-blue-600 shadow-2xs'
@@ -567,10 +634,23 @@ export const RightCanvasStage: React.FC<Props> = ({
               }`}
             >
               <MousePointer size={14} />
-              <span>선택 & 자유변형</span>
+              <span>선택 & 변형</span>
+            </button>
+            <button
+              onClick={() => setActiveTool('multi')}
+              title="영역 드래그 또는 탭으로 여러 요소를 동시에 다중 선택하는 도구"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition ${
+                activeTool === 'multi'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <BoxSelect size={14} />
+              <span>다중 선택 도구</span>
             </button>
             <button
               onClick={() => setActiveTool('draw')}
+              title="감정의 흐름을 표현하는 자유 브러시 펜"
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition ${
                 activeTool === 'draw'
                   ? 'bg-blue-600 text-white shadow-2xs'
@@ -581,6 +661,30 @@ export const RightCanvasStage: React.FC<Props> = ({
               <span>자유 드로잉</span>
             </button>
           </div>
+
+          {/* 전체 선택 도구 */}
+          {elements.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              title="캔버스의 모든 요소 전체 선택"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-100 text-xs font-semibold text-gray-700 transition"
+            >
+              <CheckSquare size={13} className="text-indigo-600" />
+              <span>전체 선택</span>
+            </button>
+          )}
+
+          {/* 선택 해제 버튼 */}
+          {currentSelectedIds.length > 0 && (
+            <button
+              onClick={handleClearSelection}
+              title="선택 해제"
+              className="flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-100 text-xs font-medium text-gray-500 transition"
+            >
+              <X size={12} />
+              <span>해제</span>
+            </button>
+          )}
 
           {/* 브러시 세부 설정 (자유 드로잉 활성화 시) */}
           {activeTool === 'draw' && (
@@ -631,7 +735,7 @@ export const RightCanvasStage: React.FC<Props> = ({
           </button>
 
           {/* 선택 요소 복제 */}
-          {activeTool === 'select' && currentSelectedIds.length > 0 && onDuplicateSelected && (
+          {activeTool !== 'draw' && currentSelectedIds.length > 0 && onDuplicateSelected && (
             <button
               onClick={onDuplicateSelected}
               title="선택된 요소 복제"
@@ -643,7 +747,7 @@ export const RightCanvasStage: React.FC<Props> = ({
           )}
 
           {/* 선택 삭제 */}
-          {activeTool === 'select' && currentSelectedIds.length > 0 && (
+          {activeTool !== 'draw' && currentSelectedIds.length > 0 && (
             <button
               onClick={onDeleteSelected}
               title="선택된 요소 삭제"
@@ -671,6 +775,10 @@ export const RightCanvasStage: React.FC<Props> = ({
             <div className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200 font-bold text-[11px]">
               <Layers size={12} />
               <span>{currentSelectedIds.length}개 다중 선택됨</span>
+            </div>
+          ) : currentSelectedIds.length === 1 ? (
+            <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-medium text-[11px]">
+              <span>1개 선택됨 (자유변형 가능)</span>
             </div>
           ) : currEmotion ? (
             <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-semibold text-[11px]">

@@ -12,8 +12,9 @@ export function hitTestElement(
 ): { hit: boolean; handle: HandleType } {
   const { px, py, w, h } = toCanvasCoords(element, canvasWidth, canvasHeight);
   const pad = 12;
-  const effectiveW = Math.max(element.type === 'point' ? 24 : 12, w);
-  const effectiveH = Math.max(element.type === 'point' ? 24 : 12, h);
+  const strokeExtra = element.strokeWidth || 0;
+  const effectiveW = Math.max(element.type === 'point' ? 24 : 14, w);
+  const effectiveH = Math.max(element.type === 'point' ? 24 : 14, Math.max(h, strokeExtra));
   const boxW = effectiveW + pad * 2;
   const boxH = effectiveH + pad * 2;
 
@@ -81,14 +82,29 @@ export function findTopHitElement(
 
   // Sort by zIndex descending (highest on top)
   const sorted = [...elements].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0));
+  const hits: { el: ArtElement; handle: HandleType }[] = [];
+
   for (const el of sorted) {
     const res = hitTestElement(clickX, clickY, el, canvasWidth, canvasHeight);
     if (res.hit) {
-      return { elementId: el.id, handle: res.handle || 'move' };
+      hits.push({ el, handle: res.handle || 'move' });
     }
   }
 
-  return { elementId: null, handle: null };
+  if (hits.length === 0) {
+    return { elementId: null, handle: null };
+  }
+
+  // 이미 선택된 요소 위를 다시 클릭한 경우, 겹쳐 있는 뒤쪽 요소를 순환 선택(Through-Click)
+  if (selectedId && hits.length > 1) {
+    const currentIndex = hits.findIndex((h) => h.el.id === selectedId);
+    if (currentIndex !== -1) {
+      const nextHit = hits[(currentIndex + 1) % hits.length];
+      return { elementId: nextHit.el.id, handle: nextHit.handle };
+    }
+  }
+
+  return { elementId: hits[0].el.id, handle: hits[0].handle };
 }
 
 export function findElementsByBox(

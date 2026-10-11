@@ -5,6 +5,43 @@ function uid(): string {
   return 'el_' + Math.random().toString(36).substring(2, 9);
 }
 
+// 흩뿌림 점들을 하나의 고정된 덩어리가 아니라, 학생이 하나하나 클릭하여 크기·색상·위치를 변형할 수 있는 개별 독립 점들로 생성
+function createSprayDots(
+  centerX: number,
+  centerY: number,
+  color: string,
+  baseZ: number,
+  spreadRadius: number = 14,
+  count: number = 7
+): ArtElement[] {
+  const offsets = [
+    { dx: 0, dy: 0, size: 7.5 },
+    { dx: -7.5, dy: -6.5, size: 5 },
+    { dx: 8.5, dy: -5, size: 6 },
+    { dx: 6.5, dy: 8.5, size: 4.5 },
+    { dx: -8.5, dy: 7.5, size: 5.5 },
+    { dx: -13, dy: 1.5, size: 3.5 },
+    { dx: 12, dy: 4, size: 4 },
+    { dx: 2, dy: -12, size: 4 }
+  ];
+
+  const scale = spreadRadius / 14;
+  return offsets.slice(0, count).map((dot, idx) => ({
+    id: uid(),
+    type: 'point' as const,
+    subType: 'single',
+    x: Math.max(-45, Math.min(45, Math.round((centerX + dot.dx * scale) * 10) / 10)),
+    y: Math.max(-45, Math.min(45, Math.round((centerY + dot.dy * scale) * 10) / 10)),
+    width: Math.max(3.5, Math.round(dot.size * scale * 10) / 10),
+    height: Math.max(3.5, Math.round(dot.size * scale * 10) / 10),
+    rotation: 0,
+    color,
+    opacity: 0.85,
+    fill: true,
+    zIndex: baseZ + idx
+  }));
+}
+
 export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
   const palette = EMOTION_PALETTES[emotion] || ['#3182CE', '#E53E3E', '#ECC94B', '#1A202C'];
   const elements: ArtElement[] = [];
@@ -16,21 +53,21 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
 
   switch (emotion) {
     case 'joy': {
-      // 밝고 경쾌한 솟아오르는 곡선과 점
+      // 밝고 경쾌한 솟아오르는 곡선과 점 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'shape', subType: 'circle', x: 0, y: 5, width: 34, height: 34, rotation: 0, color: pickColor(0), opacity: 0.85, fill: true, zIndex: 1 },
         { id: uid(), type: 'line', subType: 'smooth_curve', x: -10, y: 15, width: 50, height: 25, rotation: -20, color: pickColor(1), opacity: 0.9, strokeWidth: 5, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'wave', x: 15, y: -15, width: 45, height: 18, rotation: 15, color: pickColor(2), opacity: 0.8, strokeWidth: 4, zIndex: 3 },
         { id: uid(), type: 'shape', subType: 'blob', x: -20, y: -20, width: 26, height: 22, rotation: 45, color: pickColor(3), opacity: 0.75, fill: true, zIndex: 4 },
         { id: uid(), type: 'point', subType: 'single', x: 22, y: 20, width: 9, height: 9, rotation: 0, color: pickColor(1), opacity: 0.9, zIndex: 5 },
-        { id: uid(), type: 'point', subType: 'spray', x: -25, y: 10, width: 28, height: 28, rotation: 0, color: pickColor(0), opacity: 0.7, zIndex: 6 },
-        { id: uid(), type: 'shape', subType: 'polygon', sides: 5, distortion: 0.15, x: 5, y: -28, width: 16, height: 16, rotation: 12, color: pickColor(2), opacity: 0.9, fill: true, zIndex: 7 }
+        ...createSprayDots(-25, 10, pickColor(0), 6, 14, 6),
+        { id: uid(), type: 'shape', subType: 'polygon', sides: 5, distortion: 0.15, x: 5, y: -28, width: 16, height: 16, rotation: 12, color: pickColor(2), opacity: 0.9, fill: true, zIndex: 13 }
       );
       break;
     }
 
     case 'ecstasy': {
-      // 폭발적인 방사형과 별형
+      // 폭발적인 방사형과 별형 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'shape', subType: 'crystal', sides: 6, distortion: 0.2, x: 0, y: 0, width: 44, height: 44, rotation: 0, color: pickColor(0), opacity: 0.9, fill: true, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'circle', x: 0, y: 0, width: 26, height: 26, rotation: 0, color: pickColor(1), opacity: 0.85, fill: true, zIndex: 2 },
@@ -38,19 +75,19 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
         { id: uid(), type: 'line', subType: 'motion', x: 25, y: 22, width: 35, height: 15, rotation: 45, color: pickColor(2), opacity: 0.9, strokeWidth: 5, zIndex: 4 },
         { id: uid(), type: 'shape', subType: 'fragment', x: 20, y: -25, width: 22, height: 22, rotation: 60, color: pickColor(3), opacity: 0.8, fill: true, zIndex: 5 },
         { id: uid(), type: 'shape', subType: 'fragment', x: -20, y: 25, width: 22, height: 22, rotation: -60, color: pickColor(3), opacity: 0.8, fill: true, zIndex: 6 },
-        { id: uid(), type: 'point', subType: 'spray', x: 0, y: 0, width: 50, height: 50, rotation: 0, color: pickColor(1), opacity: 0.6, zIndex: 7 }
+        ...createSprayDots(0, 0, pickColor(1), 7, 24, 8)
       );
       break;
     }
 
     case 'flutter': {
-      // 설렘: 부드러운 유기적 파스텔 면
+      // 설렘: 부드러운 유기적 파스텔 면 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'shape', subType: 'blob', x: -12, y: -8, width: 38, height: 32, rotation: 25, color: pickColor(0), opacity: 0.7, fill: true, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'blob', x: 14, y: 12, width: 32, height: 28, rotation: -15, color: pickColor(1), opacity: 0.75, fill: true, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'smooth_curve', x: 0, y: 0, width: 45, height: 20, rotation: 30, color: pickColor(2), opacity: 0.8, strokeWidth: 4, zIndex: 3 },
         { id: uid(), type: 'shape', subType: 'circle', x: 20, y: -18, width: 18, height: 18, rotation: 0, color: pickColor(3), opacity: 0.85, fill: true, zIndex: 4 },
-        { id: uid(), type: 'point', subType: 'spray', x: -15, y: 22, width: 30, height: 30, rotation: 0, color: pickColor(0), opacity: 0.6, zIndex: 5 }
+        ...createSprayDots(-15, 22, pickColor(0), 5, 15, 6)
       );
       break;
     }
@@ -92,12 +129,12 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
     }
 
     case 'rest': {
-      // 안식: 포근한 겹침 면
+      // 안식: 포근한 겹침 면 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'shape', subType: 'blob', x: -5, y: 5, width: 48, height: 38, rotation: 10, color: pickColor(0), opacity: 0.65, fill: true, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'circle', x: 15, y: -10, width: 30, height: 30, rotation: 0, color: pickColor(1), opacity: 0.7, fill: true, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'smooth_curve', x: -10, y: -15, width: 40, height: 15, rotation: 5, color: pickColor(2), opacity: 0.8, strokeWidth: 4, zIndex: 3 },
-        { id: uid(), type: 'point', subType: 'spray', x: 10, y: 20, width: 28, height: 28, rotation: 0, color: pickColor(3), opacity: 0.6, zIndex: 4 }
+        ...createSprayDots(10, 20, pickColor(3), 4, 14, 6)
       );
       break;
     }
@@ -157,12 +194,12 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
     }
 
     case 'longing': {
-      // 그리움: 뻗어가는 점선과 아련한 보라
+      // 그리움: 뻗어가는 점선과 아련한 보라 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'line', subType: 'dashed', x: -5, y: 0, width: 65, height: 2, rotation: -35, color: pickColor(0), opacity: 0.85, strokeWidth: 3, zIndex: 1 },
         { id: uid(), type: 'shape', subType: 'crystal', sides: 4, distortion: 0.12, x: 22, y: -22, width: 18, height: 18, rotation: 20, color: pickColor(1), opacity: 0.8, fill: true, zIndex: 2 },
         { id: uid(), type: 'shape', subType: 'blob', x: -18, y: 18, width: 32, height: 26, rotation: 15, color: pickColor(2), opacity: 0.5, fill: true, zIndex: 3 },
-        { id: uid(), type: 'point', subType: 'spray', x: 0, y: -10, width: 26, height: 26, rotation: 0, color: pickColor(3), opacity: 0.65, zIndex: 4 }
+        ...createSprayDots(0, -10, pickColor(3), 4, 14, 6)
       );
       break;
     }
@@ -180,13 +217,13 @@ export function generateArtByEmotion(emotion: EmotionKey): ArtElement[] {
     }
 
     case 'anxiety': {
-      // 불안: 엉킨 선들과 차가운 긴장
+      // 불안: 엉킨 선들과 차가운 긴장 (개별 조작 가능한 흩뿌림 점군 포함)
       elements.push(
         { id: uid(), type: 'line', subType: 'spiral', x: -8, y: -5, width: 38, height: 38, rotation: 15, color: pickColor(0), opacity: 0.85, strokeWidth: 3.5, zIndex: 1 },
         { id: uid(), type: 'line', subType: 'dashed', x: 12, y: 10, width: 50, height: 2, rotation: -45, color: pickColor(1), opacity: 0.8, strokeWidth: 3, zIndex: 2 },
         { id: uid(), type: 'line', subType: 'zigzag', x: -15, y: 20, width: 40, height: 20, rotation: 70, color: pickColor(2), opacity: 0.85, strokeWidth: 4, zIndex: 3 },
         { id: uid(), type: 'shape', subType: 'fragment', x: 20, y: -20, width: 24, height: 24, rotation: -30, color: pickColor(3), opacity: 0.75, fill: true, zIndex: 4 },
-        { id: uid(), type: 'point', subType: 'spray', x: -5, y: -5, width: 35, height: 35, rotation: 0, color: pickColor(0), opacity: 0.6, zIndex: 5 }
+        ...createSprayDots(-5, -5, pickColor(0), 5, 18, 7)
       );
       break;
     }
