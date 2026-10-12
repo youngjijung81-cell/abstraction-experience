@@ -20,8 +20,10 @@
   - Organization ID: `biraagftjqlpjzzrtuxd`
   - Table: `public.artworks`
 - **GitHub**:
-  - Repository: `YoungjiJung/abstraction-experience` (또는 인증 계정 이름)
+  - Repository: `youngjijung81-cell/abstraction-experience` (https://github.com/youngjijung81-cell/abstraction-experience)
   - Branch: `main`
 - **Vercel**:
   - Project: `abstraction-experience`
+  - Project ID: `prj_aMDjEBVeBnBCIYdlLWBAg37PBSwj`
+  - Org ID: `team_iogzRgUzWCusnCB7XCvZNx9O` (youngjijung81-9685)
   - Production URL: `https://abstraction-experience.vercel.app`

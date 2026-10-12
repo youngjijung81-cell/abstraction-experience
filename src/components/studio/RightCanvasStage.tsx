@@ -149,8 +149,11 @@ export const RightCanvasStage: React.FC<Props> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    // 화면 배율(dpr)은 여기서 한 번만 적용하고, 그리기는 CSS 픽셀(논리 크기) 기준으로 한다
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
 
     // 1. 캔버스 배경 (고급 종이 질감 및 사용자 선택 배경색)
     drawBackground(ctx, width, height, canvasBgColor || '#FCFCFB');
@@ -247,7 +250,7 @@ export const RightCanvasStage: React.FC<Props> = ({
 
       const containerW = container.clientWidth - 32;
       const containerH = container.clientHeight - 32;
-      const size = Math.min(containerW, containerH, 800);
+      const size = Math.max(0, Math.floor(Math.min(containerW, containerH, 800)));
 
       const dpr = window.devicePixelRatio || 1;
       canvas.width = size * dpr;
@@ -255,16 +258,18 @@ export const RightCanvasStage: React.FC<Props> = ({
       canvas.style.width = `${size}px`;
       canvas.style.height = `${size}px`;
 
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-      }
       renderCanvas();
     };
 
     updateSize();
+    // 창 크기뿐 아니라 툴바 줄바꿈 등으로 무대 영역 크기가 바뀔 때도 다시 맞춘다
+    const observer = new ResizeObserver(updateSize);
+    if (containerRef.current) observer.observe(containerRef.current);
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
   }, [renderCanvas]);
 
   useEffect(() => {
@@ -842,8 +847,8 @@ export const RightCanvasStage: React.FC<Props> = ({
   return (
     <div className="w-full h-full flex flex-col bg-slate-100 select-none">
       {/* 1. 상단 툴바: 선택 모드 / 자유 드로잉 모드 토글 및 실행 취소/다시실행 */}
-      <div className="bg-white border-b border-gray-200 px-3.5 py-2 flex items-center justify-between gap-2 shadow-2xs">
-        <div className="flex items-center gap-1.5">
+      <div className="bg-white border-b border-gray-200 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs [&_button]:whitespace-nowrap [&_span]:whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* 모드 전환 토글: 단일 선택 vs 다중 선택 도구 vs 자유 드로잉 */}
           <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
             <button

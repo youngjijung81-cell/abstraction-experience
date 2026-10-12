@@ -420,7 +420,7 @@ export const SplitStudio: React.FC = () => {
   const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
 
   return (
-    <div className="w-screen h-screen flex flex-col md:flex-row overflow-hidden bg-white">
+    <div className="w-screen h-screen supports-[height:100dvh]:h-dvh flex flex-col md:flex-row overflow-hidden bg-white">
       {/* 1. 좌측 도구 패널 (50% 분할) */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <LeftToolPanel
