@@ -44,10 +44,15 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   if (width) {
     // 갤러리 카드용 썸네일: 작은 WebP로 줄여 전송량을 크게 줄인다.
-    const thumb = await sharp(original).resize(width, width, { fit: 'inside' }).webp({ quality: 82 }).toBuffer();
-    return new NextResponse(new Uint8Array(thumb), {
-      headers: { 'Content-Type': 'image/webp', 'Cache-Control': IMMUTABLE_CACHE }
-    });
+    // 손상된 이미지는 변환할 수 없으므로 아래에서 원본을 그대로 보낸다.
+    try {
+      const thumb = await sharp(original).resize(width, width, { fit: 'inside' }).webp({ quality: 82 }).toBuffer();
+      return new NextResponse(new Uint8Array(thumb), {
+        headers: { 'Content-Type': 'image/webp', 'Cache-Control': IMMUTABLE_CACHE }
+      });
+    } catch {
+      // fall through
+    }
   }
 
   return new NextResponse(new Uint8Array(original), {
