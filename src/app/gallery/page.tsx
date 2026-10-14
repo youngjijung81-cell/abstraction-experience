@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { ArtworkRecord } from '@/lib/types';
 import { EMOTIONS } from '@/lib/constants/emotions';
 import Link from 'next/link';
@@ -50,6 +50,11 @@ function getStudentClass(studentId?: string): string {
   return '기타';
 }
 
+// 작품 이미지 주소 (썸네일은 width 지정)
+function artworkImageUrl(id: string, width?: number): string {
+  return `/api/artworks/${id}/image${width ? `?w=${width}` : ''}`;
+}
+
 export default function GalleryPage() {
   const [artworks, setArtworks] = useState<ArtworkRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +79,9 @@ export default function GalleryPage() {
   const [secretClickCount, setSecretClickCount] = useState<number>(0);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
+  // 방금 삭제한 작품 ID (짧은 CDN 캐시 때문에 목록에 다시 나타나지 않도록 제외)
+  const deletedIdsRef = useRef<Set<string>>(new Set());
+
   // 실시간 작품 목록 불러오기 함수
   const loadArtworks = useCallback(async (silent = false) => {
     if (!silent) setIsRefreshing(true);
@@ -81,7 +89,13 @@ export default function GalleryPage() {
       const res = await fetch('/api/artworks');
       const data = await res.json();
       if (data.artworks) {
-        setArtworks(data.artworks);
+        const next: ArtworkRecord[] = data.artworks.filter(
+          (a: ArtworkRecord) => !deletedIdsRef.current.has(a.id)
+        );
+        // 목록이 그대로면 다시 그리지 않는다.
+        setArtworks((prev) =>
+          prev.length === next.length && prev.every((a, i) => a.id === next[i].id) ? prev : next
+        );
         setLastSyncTime(new Date());
       }
     } catch (e) {
@@ -97,9 +111,14 @@ export default function GalleryPage() {
     loadArtworks(false);
 
     // 10초마다 자동으로 새로운 제출 작품 실시간 반영
+    // (탭이 가려져 있으면 건너뛰고, 다시 보이면 즉시 갱신)
     const syncInterval = setInterval(() => {
-      loadArtworks(true);
+      if (document.visibilityState === 'visible') loadArtworks(true);
     }, 10000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadArtworks(true);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     // 저장된 관리자 세션 확인
     const savedPin = sessionStorage.getItem('art_admin_pin');
@@ -127,6 +146,7 @@ export default function GalleryPage() {
 
     return () => {
       clearInterval(syncInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [loadArtworks]);
@@ -250,6 +270,7 @@ export default function GalleryPage() {
       }
 
       // 화면 목록에서 즉시 제거
+      deletedIdsRef.current.add(id);
       setArtworks((prev) => prev.filter((a) => a.id !== id));
       if (selectedArtwork?.id === id) {
         setSelectedArtwork(null);
@@ -520,8 +541,10 @@ export default function GalleryPage() {
                   <div className="relative aspect-square bg-slate-100 overflow-hidden border-b border-gray-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={art.image_data}
+                      src={artworkImageUrl(art.id, 480)}
                       alt={art.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                     />
 
@@ -625,7 +648,7 @@ export default function GalleryPage() {
               <div className="aspect-square max-w-md mx-auto rounded-xl overflow-hidden border shadow-xs bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={selectedArtwork.image_data}
+                  src={artworkImageUrl(selectedArtwork.id)}
                   alt={selectedArtwork.title}
                   className="w-full h-full object-contain bg-white"
                 />
@@ -662,7 +685,7 @@ export default function GalleryPage() {
 
               <div className="flex gap-2">
                 <a
-                  href={selectedArtwork.image_data}
+                  href={artworkImageUrl(selectedArtwork.id)}
                   download={`${selectedArtwork.title}.png`}
                   className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-xs"
                 >

@@ -108,6 +108,6 @@ export interface ArtworkRecord {
   principles: string[];
   elements_summary?: string;
   description?: string;
-  image_data: string;
+  image_data?: string;
   created_at: string;
 }

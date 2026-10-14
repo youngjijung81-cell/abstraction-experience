@@ -10,7 +10,7 @@ export async function fetchArtworks(): Promise<ArtworkRecord[]> {
   try {
     const { data, error } = await supabase
       .from('artworks')
-      .select('*')
+      .select('id, student_id, student_name, title, emotion, mode, principles, elements_summary, description, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
